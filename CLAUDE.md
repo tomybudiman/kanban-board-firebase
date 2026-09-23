@@ -38,14 +38,14 @@ Path Realtime Database: `/tasks/{taskId}`
 - **Create** — form/modal penambahan task baru, nilai default `status: "todo"`
 - **Read** — papan 3 kolom (desktop) atau tab + daftar bertumpuk (mobile), kartu difilter dari `status`, sinkron realtime via listener `onValue()`
 - **Update** — dua jalur: (1) edit detail task lewat form, (2) perpindahan kolom lewat dropdown `status` pada tiap kartu
-- **Delete** — tombol hapus per kartu, disertai konfirmasi sebelum eksekusi
+- **Delete** — tombol hapus per kartu memicu `ConfirmDialog` (ikon tong sampah, judul task yang akan dihapus, tombol Batal & Hapus Task) sebelum eksekusi permanen
 
 ## Struktur Komponen
 - `app/page.jsx` — entry point satu-satunya route; me-render `<Board />` (tidak ada multi-halaman/routing, seluruh app adalah satu tool)
-- `Board` (`"use client"`) — komponen akar; menyimpan state array task lewat listener `onValue()`, me-render `Column` (desktop) atau navigasi tab (mobile)
-- `Column` — memfilter task berdasarkan `status`, me-render daftar `TaskCard`
+- `Board` (`"use client"`) — komponen akar; menyimpan state array task lewat listener `onValue()`, me-render kolom per `status` langsung di dalamnya (3 kolom di desktop, navigasi tab di mobile) beserta daftar `TaskCard` — tidak ada komponen `Column` terpisah
 - `TaskCard` (`"use client"`) — menampilkan judul, badge prioritas, rentang tanggal, dropdown status, tombol edit/hapus
 - `TaskForm` (`"use client"`, modal) — dipakai untuk Create maupun Update, mode dibedakan lewat props
+- `ConfirmDialog` (`"use client"`, modal) — dialog konfirmasi sebelum penghapusan; menampilkan judul task target serta tombol Batal / Hapus Task (destruktif)
 - `services/tasksService.js` — satu-satunya titik akses ke Firebase RTDB (get/create/update/delete task)
 
 ## Desain UI
@@ -59,11 +59,15 @@ Tab/segmented control (To Do / In Progress / Done) di bagian atas, kartu tersusu
 ### Kartu Task — elemen yang ditampilkan
 Badge prioritas berwarna, judul, deskripsi singkat, rentang `startDate`–`deadline`, dropdown status, tombol edit & hapus.
 
+### Dialog Konfirmasi Hapus
+Modal terpusat (desktop) / dialog terpusat dengan margin layar (mobile) di atas overlay gelap — bukan full-screen seperti form tambah task, karena hanya perlu satu keputusan singkat. Berisi ikon tong sampah, judul "Hapus Task Ini?", nama task yang ditarget, serta tombol Batal (outline) dan Hapus Task (merah destruktif).
+
 ### Palet & Tipografi (referensi visual — styling final SCSS di tangan developer)
 - Latar: off-white hangat `#F6F5F1`; teks utama `#1B1B1D`; teks sekunder `#6B6B70`
 - Aksen utama: `#5750E8` (tombol utama, aksi edit)
+- Warna destruktif (aksi hapus): `#C23A3A` — sama dengan warna badge prioritas Tinggi
 - Badge prioritas: rendah `#2E7D5B` teks / `#E2F2EA` latar; sedang `#8A6B14` / `#FBF1D6`; tinggi `#C23A3A` / `#FBE4E4`
-- Tipografi: **Space Grotesk** untuk judul/heading, **Manrope** untuk isi/body
+- Tipografi: **Inter** untuk seluruh teks (heading & body), weight 400 / 500 / 600 / 700 saja — file lokal optical size 18pt di `src/app/fonts/`, dimuat lewat `next/font/local`
 - Kartu: latar putih, border 1px `#E4E2DC`, radius 14px, shadow halus (`0 1px 2px rgba(27,27,29,0.05)`)
 
 ## Konvensi Kode
