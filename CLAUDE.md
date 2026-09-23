@@ -9,14 +9,16 @@ Kanban board sederhana untuk tugas mata kuliah Cloud Computing — implementasi 
 
 ## Stack Teknis
 - **Next.js** (App Router) sebagai framework React
+- **Yarn** (classic 1.x) sebagai package manager — jangan pakai `npm install` karena akan membuat `package-lock.json` yang bentrok dengan `yarn.lock`
 - **SCSS Modules** untuk styling per komponen (contoh: `TaskCard.module.scss`) — tanpa framework CSS/UI eksternal seperti Bootstrap
 - **Firebase JS SDK** (Realtime Database) — seluruh akses data diisolasi dalam satu service layer; komponen React tidak memanggil Firebase API secara langsung
 - Karena seluruh board bersifat interaktif (form, listener realtime, dropdown status), hampir semua komponen memakai directive `"use client"` di baris pertama filenya — App Router menganggap komponen sebagai Server Component secara default kecuali dinyatakan sebaliknya
 
 ## Setup Awal (jika project belum diinisialisasi)
 ```
-npx create-next-app@latest .
-npm install firebase sass
+yarn create next-app .
+yarn add firebase
+yarn add -D sass
 ```
 Saat prompt setup muncul, pilih **App Router** (bukan Pages Router). Project Firebase & Realtime Database dikonfigurasi terpisah lewat Firebase Console. Kredensial disimpan di file environment (`.env.local`, jangan di-commit) dan diinisialisasi di `services/firebase.js`.
 
