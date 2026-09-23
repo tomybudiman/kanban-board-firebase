@@ -8,16 +8,17 @@ Kanban board sederhana untuk tugas mata kuliah Cloud Computing — implementasi 
 - **Deskripsi:** Aplikasi kanban board sederhana berbasis React dan Firebase Realtime Database dengan fungsi CRUD lengkap — dibuat untuk tugas mata kuliah Cloud Computing (Backend as a Service).
 
 ## Stack Teknis
-- **React** dengan **Vite** sebagai build tool
+- **Next.js** (App Router) sebagai framework React
 - **SCSS Modules** untuk styling per komponen (contoh: `TaskCard.module.scss`) — tanpa framework CSS/UI eksternal seperti Bootstrap
 - **Firebase JS SDK** (Realtime Database) — seluruh akses data diisolasi dalam satu service layer; komponen React tidak memanggil Firebase API secara langsung
+- Karena seluruh board bersifat interaktif (form, listener realtime, dropdown status), hampir semua komponen memakai directive `"use client"` di baris pertama filenya — App Router menganggap komponen sebagai Server Component secara default kecuali dinyatakan sebaliknya
 
 ## Setup Awal (jika project belum diinisialisasi)
 ```
-npm create vite@latest . -- --template react
+npx create-next-app@latest .
 npm install firebase sass
 ```
-Project Firebase & Realtime Database dikonfigurasi terpisah lewat Firebase Console. Kredensial disimpan di file environment (`.env`, jangan di-commit) dan diinisialisasi di `services/firebase.js`.
+Saat prompt setup muncul, pilih **App Router** (bukan Pages Router). Project Firebase & Realtime Database dikonfigurasi terpisah lewat Firebase Console. Kredensial disimpan di file environment (`.env.local`, jangan di-commit) dan diinisialisasi di `services/firebase.js`.
 
 ## Struktur Data
 Path Realtime Database: `/tasks/{taskId}`
@@ -38,10 +39,11 @@ Path Realtime Database: `/tasks/{taskId}`
 - **Delete** — tombol hapus per kartu, disertai konfirmasi sebelum eksekusi
 
 ## Struktur Komponen
-- `Board` — komponen akar; menyimpan state array task lewat listener `onValue()`, me-render `Column` (desktop) atau navigasi tab (mobile)
+- `app/page.jsx` — entry point satu-satunya route; me-render `<Board />` (tidak ada multi-halaman/routing, seluruh app adalah satu tool)
+- `Board` (`"use client"`) — komponen akar; menyimpan state array task lewat listener `onValue()`, me-render `Column` (desktop) atau navigasi tab (mobile)
 - `Column` — memfilter task berdasarkan `status`, me-render daftar `TaskCard`
-- `TaskCard` — menampilkan judul, badge prioritas, rentang tanggal, dropdown status, tombol edit/hapus
-- `TaskForm` (modal) — dipakai untuk Create maupun Update, mode dibedakan lewat props
+- `TaskCard` (`"use client"`) — menampilkan judul, badge prioritas, rentang tanggal, dropdown status, tombol edit/hapus
+- `TaskForm` (`"use client"`, modal) — dipakai untuk Create maupun Update, mode dibedakan lewat props
 - `services/tasksService.js` — satu-satunya titik akses ke Firebase RTDB (get/create/update/delete task)
 
 ## Desain UI
@@ -66,3 +68,4 @@ Badge prioritas berwarna, judul, deskripsi singkat, rentang `startDate`–`deadl
 - Nama field data pakai camelCase (contoh: `startDate`, bukan `start_date`)
 - Label/teks UI dalam Bahasa Indonesia; nama variabel, fungsi, dan komponen dalam Bahasa Inggris
 - Tidak menggunakan framework CSS (Bootstrap dsb.) — styling murni SCSS Modules per komponen
+- Directive `"use client"` ditulis di baris paling atas file, sebelum import lain, untuk setiap komponen yang memakai hook React atau Firebase SDK
