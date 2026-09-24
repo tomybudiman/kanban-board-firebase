@@ -48,6 +48,11 @@
           background-color: #eae8e2;
         }
       }
+      &__taskCardContainer {
+        gap: 16px;
+        display: flex;
+        flex-direction: column;
+      }
       &__emptyTaskPlaceholder {
         gap: 8px;
         display: flex;

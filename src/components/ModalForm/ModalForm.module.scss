@@ -32,6 +32,13 @@
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+    &__error {
+      color: #c23a3a;
+      font-size: 14px;
+      border-radius: 10px;
+      padding: 10px 12px;
+      background-color: #fbe4e4;
+    }
     &__field {
       gap: 6px;
       display: flex;

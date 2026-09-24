@@ -1,11 +1,13 @@
 "use client";
 
 import { faPlus } from "@fortawesome/pro-solid-svg-icons";
-import { type ReactElement, useState } from "react";
+import { type ReactElement, useEffect, useState } from "react";
 
 import Button from "@/components/Button/Button";
-import Modal from "@/components/Modal/Modal";
-import ModalForm from "@/components/ModalForm/ModalForm";
+import ModalForm, {
+  type TaskFormValues,
+} from "@/components/ModalForm/ModalForm";
+import TaskCard from "@/components/TaskCard/TaskCard";
 import taskService, {
   type Task,
   type TaskStatus,
@@ -29,6 +31,27 @@ export default function Home(): ReactElement {
   ]);
 
   /**
+   * @description Listens to /tasks in Firebase and puts every task into the column matching its status. Runs again on every change in the database; the listener is removed when the page unmounts.
+   */
+  useEffect((): (() => void) => {
+    return taskService.subscribeTasks(
+      (tasks: Task[]): void => {
+        setContent((columns: StatusColumn[]): StatusColumn[] =>
+          columns.map((column: StatusColumn): StatusColumn => ({
+            ...column,
+            tasks: tasks.filter(
+              (task: Task): boolean => task.status === column.id,
+            ),
+          })),
+        );
+      },
+      (error: Error): void => {
+        console.error("Gagal memuat task dari Firebase:", error);
+      },
+    );
+  }, []);
+
+  /**
    * @description Sets the modal type to "create" and opens the modal.
    */
   const onClickCreateTask: () => void = (): void => {
@@ -37,10 +60,30 @@ export default function Home(): ReactElement {
   };
 
   /**
-   * @description Closes the modal once the form is submitted. Saving the task to Firebase is not wired up yet.
+   * @description Saves the new task to Firebase, then closes the modal. If saving fails, the error reaches ModalForm, which shows it and keeps the modal open.
    */
-  const onSubmitTask: () => void = (): void => {
+  const onSubmitTask: (values: TaskFormValues) => Promise<void> = async (
+    values: TaskFormValues,
+  ): Promise<void> => {
+    await taskService.createTask(values);
     setModalState(false);
+  };
+
+  /**
+   * @description Saves a task's new status to Firebase. The card moves to its new column right away, because Firebase updates local listeners before the server confirms; if the server refuses the write, Firebase moves it back and the error is logged.
+   */
+  const onChangeTaskStatus: (
+    id: string,
+    status: TaskStatus,
+  ) => Promise<void> = async (
+    id: string,
+    status: TaskStatus,
+  ): Promise<void> => {
+    try {
+      await taskService.updateTask(id, { status });
+    } catch (error: unknown) {
+      console.error("Gagal mengubah status task:", error);
+    }
   };
 
   // Main Render
@@ -75,15 +118,34 @@ export default function Home(): ReactElement {
                   <p>{eachStatus.label}</p>
                   <span>{eachStatus.tasks.length}</span>
                 </div>
-                {eachStatus.tasks.length === 0 ? (
-                  <div
-                    className={
-                      styles.Home__content__statusRow__emptyTaskPlaceholder
-                    }
-                  >
-                    <p>Belum ada task</p>
-                  </div>
-                ) : null}
+                <div
+                  className={styles.Home__content__statusRow__taskCardContainer}
+                >
+                  {eachStatus.tasks.length === 0 ? (
+                    <div
+                      className={
+                        styles.Home__content__statusRow__emptyTaskPlaceholder
+                      }
+                    >
+                      <p>Belum ada task</p>
+                    </div>
+                  ) : (
+                    eachStatus.tasks.map((eachTask: Task) => (
+                      <TaskCard
+                        key={eachTask.id}
+                        title={eachTask.title}
+                        priority={eachTask.priority}
+                        description={eachTask.description}
+                        startDate={eachTask.startDate}
+                        deadline={eachTask.deadline}
+                        status={eachTask.status}
+                        onStatusChange={(status: TaskStatus): void => {
+                          void onChangeTaskStatus(eachTask.id, status);
+                        }}
+                      />
+                    ))
+                  )}
+                </div>
               </div>
             </div>
           ))}

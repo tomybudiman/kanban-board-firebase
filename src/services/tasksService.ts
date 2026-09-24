@@ -2,7 +2,9 @@ import {
   type DataSnapshot,
   type Unsubscribe,
   onValue,
+  push,
   ref,
+  update,
 } from "firebase/database";
 
 import { getDb } from "./firebase";
@@ -39,3 +41,30 @@ export function subscribeTasks(
     onError,
   );
 }
+
+/**
+ * @description Saves a new task under /tasks with an auto-generated key. Resolves once Firebase has confirmed the write, and rejects if it was refused (e.g. by the database rules).
+ */
+export async function createTask(task: TaskData): Promise<void> {
+  await push(ref(getDb(), "tasks"), task);
+}
+
+/**
+ * @description Changes only the given fields of /tasks/{id} (e.g. { status: "done" }); other fields are left as they are. Rejects if the write is refused.
+ */
+export async function updateTask(
+  id: string,
+  changes: Partial<TaskData>,
+): Promise<void> {
+  await update(ref(getDb(), `tasks/${id}`), changes);
+}
+
+interface TaskService {
+  subscribeTasks: typeof subscribeTasks;
+  createTask: typeof createTask;
+  updateTask: typeof updateTask;
+}
+
+const taskService: TaskService = { subscribeTasks, createTask, updateTask };
+
+export default taskService;

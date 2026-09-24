@@ -22,7 +22,7 @@ yarn create next-app .
 yarn add firebase
 yarn add -D sass
 ```
-Saat prompt setup muncul, pilih **App Router** (bukan Pages Router). Project Firebase & Realtime Database dikonfigurasi terpisah lewat Firebase Console. Kredensial disimpan di file environment (`.env.local`, jangan di-commit) dan diinisialisasi di `services/firebase.js`.
+Saat prompt setup muncul, pilih **App Router** (bukan Pages Router). Project Firebase & Realtime Database dikonfigurasi terpisah lewat Firebase Console. Kredensial disimpan di file environment (`.env.local`, jangan di-commit) dan diinisialisasi di `src/services/firebase.ts`. Semua variabel env Firebase wajib berawalan `NEXT_PUBLIC_` (lihat `.env.example`).
 
 ## Struktur Data
 Path Realtime Database: `/tasks/{taskId}`
@@ -50,7 +50,7 @@ Path Realtime Database: `/tasks/{taskId}`
 - `ConfirmDialog` (`"use client"`, modal) — dialog konfirmasi sebelum penghapusan; menampilkan judul task target serta tombol Batal / Hapus Task (destruktif)
 - `Modal` (`"use client"`) — komponen dasar berbasis `<dialog>` native yang dipakai `ModalForm` & `ConfirmDialog`; **controlled** lewat props `isOpen` + `onClose` (bukan method via ref), plus `className` dan `aria-labelledby`/`aria-label`. Komponen di dalamnya bisa menutup modal lewat `useModal().close()`. Elemen dengan atribut `data-autofocus` otomatis difokus saat modal terbuka (`autoFocus` React tidak berfungsi di dalam `<dialog>`)
 - `Button` — tombol dasar untuk seluruh app; props `color` (`primary` / `secondary` / `danger` / `warning` / `neutral`), `variant` (`solid` / `outlined` / `text`), `size` (`small` / `medium` / `large`), default `primary` + `solid` + `medium` + `type="button"`; menerima semua props `<button>` native. Area sentuh selalu ≥ 44×44px. Ikon lewat `startIcon` / `endIcon` (tipe `IconDefinition` Font Awesome); tanpa `children` otomatis jadi tombol ikon persegi dan **wajib** diberi `aria-label`
-- `services/tasksService.js` — satu-satunya titik akses ke Firebase RTDB (get/create/update/delete task)
+- `src/services/tasksService.ts` — satu-satunya titik akses ke Firebase RTDB; dipakai lewat default export `taskService` (mis. `taskService.createTask(values)`). Sudah ada: `subscribeTasks` (listener `onValue`) dan `createTask` (`push` ke `/tasks`, resolve setelah Firebase mengonfirmasi). Belum ada: update & delete. Koneksi Firebase diinisialisasi di `src/services/firebase.ts` (`getDb()`)
 
 ## Desain UI
 

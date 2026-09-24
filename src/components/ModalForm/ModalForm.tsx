@@ -132,6 +132,7 @@ function TaskForm({ defaultValues, onSubmit }: TaskFormProps): ReactElement {
   const {
     control,
     register,
+    setError,
     handleSubmit,
     formState: { errors, isSubmitting },
   }: UseFormReturn<TaskFormValues> = useForm<TaskFormValues>({
@@ -148,16 +149,22 @@ function TaskForm({ defaultValues, onSubmit }: TaskFormProps): ReactElement {
   const startDate: string = useWatch({ control, name: "startDate" });
 
   /**
-   * @description Trims the text fields, then hands the values to the parent.
+   * @description Trims the text fields, then hands the values to the parent. If the parent fails (e.g. Firebase refuses the write), the error is shown in the form and the modal stays open.
    */
   const submit: SubmitHandler<TaskFormValues> = async (
     values: TaskFormValues,
   ): Promise<void> => {
-    await onSubmit({
-      ...values,
-      title: values.title.trim(),
-      description: values.description.trim(),
-    });
+    try {
+      await onSubmit({
+        ...values,
+        title: values.title.trim(),
+        description: values.description.trim(),
+      });
+    } catch (error: unknown) {
+      const reason: string =
+        error instanceof Error ? error.message : "terjadi kesalahan";
+      setError("root", { message: `Gagal menyimpan task: ${reason}` });
+    }
   };
 
   // Main render
@@ -267,6 +274,11 @@ function TaskForm({ defaultValues, onSubmit }: TaskFormProps): ReactElement {
           />
         </div>
       </div>
+      {errors.root?.message && (
+        <p role="alert" className={styles.ModalForm__content__error}>
+          {errors.root.message}
+        </p>
+      )}
       <div className={styles.ModalForm__footer}>
         <Button
           size="medium"
