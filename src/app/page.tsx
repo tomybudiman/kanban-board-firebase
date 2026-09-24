@@ -1,9 +1,10 @@
 "use client";
 
-import { faPlus } from "@fortawesome/pro-solid-svg-icons";
+import { faPlus, faTrashCan } from "@fortawesome/pro-solid-svg-icons";
 import { type ReactElement, useEffect, useState } from "react";
 
 import Button from "@/components/Button/Button";
+import ConfirmDialog from "@/components/ConfirmDialog/ConfirmDialog";
 import ModalForm, {
   type TaskFormValues,
 } from "@/components/ModalForm/ModalForm";
@@ -24,6 +25,11 @@ interface StatusColumn {
 export default function Home(): ReactElement {
   const [modalType, setModalType] = useState<"create" | "edit">("create");
   const [isModalOpen, setModalState] = useState<boolean>(false);
+  const [isConfirmationDialogOpen, setConfirmationDialogState] =
+    useState<boolean>(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  // Like editingTask, kept after the dialog closes so its text doesn't change during the closing animation.
+  const [deletingTask, setDeletingTask] = useState<Task | null>(null);
   const [content, setContent] = useState<StatusColumn[]>([
     { id: "todo", label: "To Do", tasks: [] },
     { id: "in_progress", label: "In Progress", tasks: [] },
@@ -56,17 +62,48 @@ export default function Home(): ReactElement {
    */
   const onClickCreateTask: () => void = (): void => {
     setModalType("create");
+    setEditingTask(null);
     setModalState(true);
   };
 
   /**
-   * @description Saves the new task to Firebase, then closes the modal. If saving fails, the error reaches ModalForm, which shows it and keeps the modal open.
+   * @description Sets the modal type to "edit" and opens the modal with the form filled in from the given task.
+   */
+  const onClickEditTask: (task: Task) => void = (task: Task): void => {
+    setModalType("edit");
+    setEditingTask(task);
+    setModalState(true);
+  };
+
+  /**
+   * @description Saves the form to Firebase (a new task in create mode, the edited task in edit mode), then closes the modal. If saving fails, the error reaches ModalForm, which shows it and keeps the modal open.
    */
   const onSubmitTask: (values: TaskFormValues) => Promise<void> = async (
     values: TaskFormValues,
   ): Promise<void> => {
-    await taskService.createTask(values);
+    if (modalType === "edit" && editingTask) {
+      await taskService.updateTask(editingTask.id, values);
+    } else {
+      await taskService.createTask(values);
+    }
     setModalState(false);
+  };
+
+  /**
+   * @description Opens the confirmation dialog for deleting the given task.
+   */
+  const onClickDeleteTask: (task: Task) => void = (task: Task): void => {
+    setDeletingTask(task);
+    setConfirmationDialogState(true);
+  };
+
+  /**
+   * @description Deletes the task chosen in onClickDeleteTask from Firebase. ConfirmDialog closes itself when this succeeds, and shows the error when it fails.
+   */
+  const onConfirmDeleteTask: () => Promise<void> = async (): Promise<void> => {
+    if (deletingTask) {
+      await taskService.deleteTask(deletingTask.id);
+    }
   };
 
   /**
@@ -91,9 +128,25 @@ export default function Home(): ReactElement {
     <>
       <ModalForm
         isOpen={isModalOpen}
+        onSubmit={onSubmitTask}
+        defaultValues={editingTask ?? undefined}
         onClose={(): void => setModalState(false)}
         title={modalType === "create" ? "Tambah Task Baru" : "Edit Task"}
-        onSubmit={onSubmitTask}
+      />
+      <ConfirmDialog
+        variant="danger"
+        icon={faTrashCan}
+        title="Hapus Task Ini?"
+        onConfirm={onConfirmDeleteTask}
+        isOpen={isConfirmationDialogOpen}
+        onClose={(): void => setConfirmationDialogState(false)}
+        description={
+          <>
+            Task <strong>&#34;{deletingTask?.title}&#34;</strong> akan dihapus
+            permanen dan tidak bisa dikembalikan.
+          </>
+        }
+        confirmLabel="Hapus Task"
       />
       <div className={styles.Home}>
         <header className={styles.Home__header}>
@@ -142,6 +195,8 @@ export default function Home(): ReactElement {
                         onStatusChange={(status: TaskStatus): void => {
                           void onChangeTaskStatus(eachTask.id, status);
                         }}
+                        onEdit={(): void => onClickEditTask(eachTask)}
+                        onDelete={(): void => onClickDeleteTask(eachTask)}
                       />
                     ))
                   )}

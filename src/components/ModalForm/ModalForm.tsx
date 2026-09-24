@@ -149,16 +149,19 @@ function TaskForm({ defaultValues, onSubmit }: TaskFormProps): ReactElement {
   const startDate: string = useWatch({ control, name: "startDate" });
 
   /**
-   * @description Trims the text fields, then hands the values to the parent. If the parent fails (e.g. Firebase refuses the write), the error is shown in the form and the modal stays open.
+   * @description Trims the text fields, then hands the values to the parent. Only the six task fields are passed on, so extra keys in defaultValues (such as the id of the task being edited) never end up in Firebase. If the parent fails (e.g. Firebase refuses the write), the error is shown in the form and the modal stays open.
    */
   const submit: SubmitHandler<TaskFormValues> = async (
     values: TaskFormValues,
   ): Promise<void> => {
     try {
       await onSubmit({
-        ...values,
         title: values.title.trim(),
         description: values.description.trim(),
+        status: values.status,
+        priority: values.priority,
+        startDate: values.startDate,
+        deadline: values.deadline,
       });
     } catch (error: unknown) {
       const reason: string =

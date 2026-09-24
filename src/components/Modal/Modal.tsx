@@ -22,8 +22,10 @@ export interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   className?: string;
+  role?: "dialog" | "alertdialog";
   "aria-label"?: string;
   "aria-labelledby"?: string;
+  "aria-describedby"?: string;
   children?: ReactNode;
 }
 

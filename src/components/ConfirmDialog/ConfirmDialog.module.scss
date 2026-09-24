@@ -1,0 +1,62 @@
+.ConfirmDialog {
+  width: 360px;
+  &__content {
+    gap: 16px;
+    display: flex;
+    text-align: left;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  &__icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    font-size: 20px;
+    border-radius: 16px;
+    align-items: center;
+    justify-content: center;
+    &--default {
+      color: #5750e8;
+      background-color: #edecfd;
+    }
+    &--danger {
+      color: #c23a3a;
+      background-color: #fbe4e4;
+    }
+  }
+  &__textContainer {
+    gap: 8px;
+    display: flex;
+    flex-direction: column;
+  }
+  &__title {
+    color: #1b1b1d;
+    font-size: 18px;
+    font-weight: 600;
+  }
+  &__description {
+    color: #6b6b70;
+    font-size: 14px;
+    line-height: 20px;
+    strong {
+      color: #1b1b1d;
+      font-weight: 600;
+    }
+  }
+  &__error {
+    width: 100%;
+    color: #c23a3a;
+    font-size: 14px;
+    border-radius: 10px;
+    padding: 10px 12px;
+    background-color: #fbe4e4;
+  }
+  &__actions {
+    gap: 8px;
+    width: 100%;
+    display: flex;
+    > button {
+      flex: 1;
+    }
+  }
+}

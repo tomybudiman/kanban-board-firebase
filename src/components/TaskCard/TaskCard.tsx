@@ -21,6 +21,8 @@ export interface TaskCardProps {
   deadline: Task["deadline"];
   status: Task["status"];
   onStatusChange: (status: TaskStatus) => void;
+  onEdit: () => void;
+  onDelete: () => void;
 }
 
 interface StatusOption {
@@ -80,6 +82,8 @@ export default function TaskCard({
   deadline,
   status,
   onStatusChange,
+  onEdit,
+  onDelete,
 }: TaskCardProps): ReactElement {
   const priorityClassName: string = [
     styles.TaskCard__priority,
@@ -125,10 +129,15 @@ export default function TaskCard({
           </select>
           <FontAwesomeIcon icon={faChevronDown} />
         </div>
-        <Button size="small" variant="text">
+        <Button size="small" variant="text" onClick={(): void => onEdit()}>
           Edit
         </Button>
-        <Button size="small" color="danger" variant="text">
+        <Button
+          size="small"
+          color="danger"
+          variant="text"
+          onClick={(): void => onDelete()}
+        >
           Hapus
         </Button>
       </div>

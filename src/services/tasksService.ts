@@ -4,6 +4,7 @@ import {
   onValue,
   push,
   ref,
+  remove,
   update,
 } from "firebase/database";
 
@@ -59,12 +60,25 @@ export async function updateTask(
   await update(ref(getDb(), `tasks/${id}`), changes);
 }
 
+/**
+ * @description Permanently removes /tasks/{id}. Rejects if the delete is refused.
+ */
+export async function deleteTask(id: string): Promise<void> {
+  await remove(ref(getDb(), `tasks/${id}`));
+}
+
 interface TaskService {
   subscribeTasks: typeof subscribeTasks;
   createTask: typeof createTask;
   updateTask: typeof updateTask;
+  deleteTask: typeof deleteTask;
 }
 
-const taskService: TaskService = { subscribeTasks, createTask, updateTask };
+const taskService: TaskService = {
+  subscribeTasks,
+  createTask,
+  updateTask,
+  deleteTask,
+};
 
 export default taskService;
