@@ -1,7 +1,13 @@
-import { getApp, getApps, initializeApp } from 'firebase/app';
-import { getDatabase } from 'firebase/database';
+import {
+  type FirebaseApp,
+  type FirebaseOptions,
+  getApp,
+  getApps,
+  initializeApp,
+} from "firebase/app";
+import { type Database, getDatabase } from "firebase/database";
 
-const firebaseConfig = {
+const firebaseConfig: FirebaseOptions = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
   databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL,
@@ -12,7 +18,9 @@ const firebaseConfig = {
 };
 
 // Initialized lazily so Firebase only starts in the browser, not while Next.js prerenders the page.
-export function getDb() {
-  const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+export function getDb(): Database {
+  const app: FirebaseApp = getApps().length
+    ? getApp()
+    : initializeApp(firebaseConfig);
   return getDatabase(app);
 }

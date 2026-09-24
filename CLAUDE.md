@@ -10,6 +10,7 @@ Kanban board sederhana untuk tugas mata kuliah Cloud Computing — implementasi 
 ## Stack Teknis
 - **Next.js** (App Router) sebagai framework React
 - **Yarn** (classic 1.x) sebagai package manager — jangan pakai `npm install` karena akan membuat `package-lock.json` yang bentrok dengan `yarn.lock`
+- **React Hook Form** untuk form (tanpa library validasi tambahan — aturan validasi ditulis lewat opsi `register`)
 - **Font Awesome Pro** untuk ikon (`@fortawesome/pro-solid-svg-icons` + `@fortawesome/react-fontawesome`), di-setup di `layout.tsx` (`config.autoAddCss = false`). Paket Pro diambil dari registry privat lewat `.npmrc`, yang tokennya dibaca dari env `FONTAWESOME_PACKAGE_TOKEN` — tanpa env ini **semua** perintah `yarn` gagal ("Failed to replace env in config")
 - **SCSS Modules** untuk styling per komponen (contoh: `TaskCard.module.scss`) — tanpa framework CSS/UI eksternal seperti Bootstrap
 - **Firebase JS SDK** (Realtime Database) — seluruh akses data diisolasi dalam satu service layer; komponen React tidak memanggil Firebase API secara langsung
@@ -45,9 +46,9 @@ Path Realtime Database: `/tasks/{taskId}`
 - `app/page.jsx` — entry point satu-satunya route; me-render `<Board />` (tidak ada multi-halaman/routing, seluruh app adalah satu tool)
 - `Board` (`"use client"`) — komponen akar; menyimpan state array task lewat listener `onValue()`, me-render kolom per `status` langsung di dalamnya (3 kolom di desktop, navigasi tab di mobile) beserta daftar `TaskCard` — tidak ada komponen `Column` terpisah
 - `TaskCard` (`"use client"`) — menampilkan judul, badge prioritas, rentang tanggal, dropdown status, tombol edit/hapus
-- `TaskForm` (`"use client"`, modal) — dipakai untuk Create maupun Update, mode dibedakan lewat props
+- `ModalForm` (`"use client"`, modal) — form task berbasis **React Hook Form**, dipakai untuk Create maupun Update (judul modal via `title`, nilai awal edit via `defaultValues`, hasil lewat `onSubmit`). Layout: 1 field per baris (Judul, Deskripsi, Status, Prioritas), kecuali Tanggal Mulai + Deadline dalam 1 baris. Validasi: judul wajib, tanggal mulai & deadline wajib, deadline ≥ tanggal mulai; deskripsi opsional. Default: `status: "todo"`, `priority: "medium"`, `startDate` hari ini. Form di-render di dalam `Modal`, jadi selalu kosong lagi setiap kali dibuka
 - `ConfirmDialog` (`"use client"`, modal) — dialog konfirmasi sebelum penghapusan; menampilkan judul task target serta tombol Batal / Hapus Task (destruktif)
-- `Modal` (`"use client"`) — komponen dasar berbasis `<dialog>` native yang dipakai `TaskForm` & `ConfirmDialog`; **controlled** lewat props `isOpen` + `onClose` (bukan method via ref), plus `className` dan `aria-labelledby`/`aria-label`. Komponen di dalamnya bisa menutup modal lewat `useModal().close()`
+- `Modal` (`"use client"`) — komponen dasar berbasis `<dialog>` native yang dipakai `ModalForm` & `ConfirmDialog`; **controlled** lewat props `isOpen` + `onClose` (bukan method via ref), plus `className` dan `aria-labelledby`/`aria-label`. Komponen di dalamnya bisa menutup modal lewat `useModal().close()`. Elemen dengan atribut `data-autofocus` otomatis difokus saat modal terbuka (`autoFocus` React tidak berfungsi di dalam `<dialog>`)
 - `Button` — tombol dasar untuk seluruh app; props `color` (`primary` / `secondary` / `danger` / `warning` / `neutral`), `variant` (`solid` / `outlined` / `text`), `size` (`small` / `medium` / `large`), default `primary` + `solid` + `medium` + `type="button"`; menerima semua props `<button>` native. Area sentuh selalu ≥ 44×44px. Ikon lewat `startIcon` / `endIcon` (tipe `IconDefinition` Font Awesome); tanpa `children` otomatis jadi tombol ikon persegi dan **wajib** diberi `aria-label`
 - `services/tasksService.js` — satu-satunya titik akses ke Firebase RTDB (get/create/update/delete task)
 
@@ -76,6 +77,7 @@ Modal terpusat (desktop) / dialog terpusat dengan margin layar (mobile) di atas 
 ## Konvensi Kode
 - Nama field data pakai camelCase (contoh: `startDate`, bukan `start_date`)
 - Label/teks UI dalam Bahasa Indonesia; nama variabel, fungsi, dan komponen dalam Bahasa Inggris
+- Tipe TypeScript ditulis eksplisit: setiap variabel (`const isClosing: boolean`), parameter, dan return type fungsi — termasuk komponen (`: ReactElement`) serta callback/handler inline (`(event: MouseEvent<HTMLButtonElement>): void => …`). Hook memakai generic (`useState<boolean>`, `useRef<HTMLDialogElement>`); tipe diambil dari export resmi library (mis. `Database`, `Unsubscribe` dari Firebase)
 - Tidak menggunakan framework CSS (Bootstrap dsb.) — styling murni SCSS Modules per komponen
 - Format kode dengan Prettier (`.prettierrc`): kutip ganda, trailing comma, import diurutkan otomatis (library → `@/…` → relatif, dipisah baris kosong). Jalankan `yarn format` sebelum commit; file Markdown tidak ikut diformat
 - Directive `"use client"` ditulis di baris paling atas file, sebelum import lain, untuk setiap komponen yang memakai hook React atau Firebase SDK

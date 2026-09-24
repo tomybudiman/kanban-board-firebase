@@ -1,15 +1,53 @@
 .Modal {
+  margin: auto;
   border: none;
   padding: 24px;
   color: #1b1b1d;
   border-radius: 16px;
   background-color: #ffffff;
+  animation: modal-in 0.2s ease-out;
+  --modal-hidden-transform: translateY(16px) scale(0.98);
   &::backdrop {
     background-color: rgba(27, 27, 29, 0.5);
+    animation: backdrop-in 0.2s ease-out;
+  }
+  &--closing {
+    animation: modal-out 0.15s ease-in forwards;
+    &::backdrop {
+      animation: backdrop-out 0.15s ease-in forwards;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    --modal-hidden-transform: none;
   }
 }
 
-// Stop the page behind the modal from scrolling while it is open.
 html:has(.Modal[open]) {
   overflow: hidden;
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: var(--modal-hidden-transform);
+  }
+}
+
+@keyframes modal-out {
+  to {
+    opacity: 0;
+    transform: var(--modal-hidden-transform);
+  }
+}
+
+@keyframes backdrop-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes backdrop-out {
+  to {
+    opacity: 0;
+  }
 }

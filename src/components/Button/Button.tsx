@@ -1,6 +1,6 @@
 import { type IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { type ComponentProps } from "react";
+import { type ComponentProps, type ReactElement } from "react";
 
 import styles from "./Button.module.scss";
 
@@ -27,7 +27,7 @@ export default function Button({
   className,
   children,
   ...props
-}: ButtonProps) {
+}: ButtonProps): ReactElement {
   const isIconOnly: boolean = !children && Boolean(startIcon || endIcon);
   const classNames: string = [
     styles.Button,
