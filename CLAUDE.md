@@ -10,6 +10,7 @@ Kanban board sederhana untuk tugas mata kuliah Cloud Computing — implementasi 
 ## Stack Teknis
 - **Next.js** (App Router) sebagai framework React
 - **Yarn** (classic 1.x) sebagai package manager — jangan pakai `npm install` karena akan membuat `package-lock.json` yang bentrok dengan `yarn.lock`
+- **Font Awesome Pro** untuk ikon (`@fortawesome/pro-solid-svg-icons` + `@fortawesome/react-fontawesome`), di-setup di `layout.tsx` (`config.autoAddCss = false`). Paket Pro diambil dari registry privat lewat `.npmrc`, yang tokennya dibaca dari env `FONTAWESOME_PACKAGE_TOKEN` — tanpa env ini **semua** perintah `yarn` gagal ("Failed to replace env in config")
 - **SCSS Modules** untuk styling per komponen (contoh: `TaskCard.module.scss`) — tanpa framework CSS/UI eksternal seperti Bootstrap
 - **Firebase JS SDK** (Realtime Database) — seluruh akses data diisolasi dalam satu service layer; komponen React tidak memanggil Firebase API secara langsung
 - Karena seluruh board bersifat interaktif (form, listener realtime, dropdown status), hampir semua komponen memakai directive `"use client"` di baris pertama filenya — App Router menganggap komponen sebagai Server Component secara default kecuali dinyatakan sebaliknya
@@ -46,6 +47,8 @@ Path Realtime Database: `/tasks/{taskId}`
 - `TaskCard` (`"use client"`) — menampilkan judul, badge prioritas, rentang tanggal, dropdown status, tombol edit/hapus
 - `TaskForm` (`"use client"`, modal) — dipakai untuk Create maupun Update, mode dibedakan lewat props
 - `ConfirmDialog` (`"use client"`, modal) — dialog konfirmasi sebelum penghapusan; menampilkan judul task target serta tombol Batal / Hapus Task (destruktif)
+- `Modal` (`"use client"`) — komponen dasar berbasis `<dialog>` native yang dipakai `TaskForm` & `ConfirmDialog`; **controlled** lewat props `isOpen` + `onClose` (bukan method via ref), plus `className` dan `aria-labelledby`/`aria-label`. Komponen di dalamnya bisa menutup modal lewat `useModal().close()`
+- `Button` — tombol dasar untuk seluruh app; props `color` (`primary` / `secondary` / `danger` / `warning` / `neutral`), `variant` (`solid` / `outlined` / `text`), `size` (`small` / `medium` / `large`), default `primary` + `solid` + `medium` + `type="button"`; menerima semua props `<button>` native. Area sentuh selalu ≥ 44×44px. Ikon lewat `startIcon` / `endIcon` (tipe `IconDefinition` Font Awesome); tanpa `children` otomatis jadi tombol ikon persegi dan **wajib** diberi `aria-label`
 - `services/tasksService.js` — satu-satunya titik akses ke Firebase RTDB (get/create/update/delete task)
 
 ## Desain UI

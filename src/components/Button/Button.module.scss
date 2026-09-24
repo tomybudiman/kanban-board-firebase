@@ -1,0 +1,117 @@
+@use "sass:map";
+
+// main: solid background, and text/border color for outlined & text
+// hover: solid background on hover
+$colors: (
+  primary: (
+    main: #5750e8,
+    hover: #4a44c5,
+  ),
+  secondary: (
+    main: #1b1b1d,
+    hover: #3d3d3f,
+  ),
+  danger: (
+    main: #c23a3a,
+    hover: #a53131,
+  ),
+  warning: (
+    main: #8a6b14,
+    hover: #755b11,
+  ),
+  neutral: (
+    main: #6b6b70,
+    hover: #5b5b5f,
+  ),
+);
+
+.Button {
+  gap: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  line-height: 14px;
+  position: relative;
+  align-items: center;
+  white-space: nowrap;
+  border-radius: 10px;
+  display: inline-flex;
+  font-family: inherit;
+  justify-content: center;
+  border: 1px solid transparent;
+  transition:
+    color 0.15s,
+    border-color 0.15s,
+    background-color 0.15s;
+  // Keep the tappable area at least 44×44px (see CLAUDE.md), even for small buttons.
+  &::before {
+    top: 50%;
+    left: 50%;
+    content: "";
+    width: 100%;
+    height: 100%;
+    min-width: 44px;
+    min-height: 44px;
+    position: absolute;
+    transform: translate(-50%, -50%);
+  }
+  &:focus-visible {
+    outline-offset: 2px;
+    outline: 2px solid var(--button-color);
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  // Colors
+  @each $name, $color in $colors {
+    &--#{$name} {
+      --button-color: #{map.get($color, main)};
+      --button-color-hover: #{map.get($color, hover)};
+    }
+  }
+
+  // Variants
+  &--solid {
+    color: #ffffff;
+    background-color: var(--button-color);
+    &:hover:not(:disabled) {
+      background-color: var(--button-color-hover);
+    }
+  }
+  &--outlined {
+    border-color: color-mix(in srgb, var(--button-color) 40%, transparent);
+  }
+  &--outlined,
+  &--text {
+    color: var(--button-color);
+    background-color: transparent;
+    &:hover:not(:disabled) {
+      background-color: color-mix(in srgb, var(--button-color) 8%, transparent);
+    }
+  }
+
+  // Sizes
+  &--small {
+    height: 32px;
+    font-size: 13px;
+    padding: 0 12px;
+  }
+  &--medium {
+    height: 40px;
+    font-size: 14px;
+    padding: 0 16px;
+  }
+  &--large {
+    gap: 8px;
+    height: 48px;
+    font-size: 16px;
+    padding: 0 24px;
+  }
+
+  // Icon without text: square button, same height as its size
+  &--iconOnly {
+    padding: 0;
+    aspect-ratio: 1;
+  }
+}

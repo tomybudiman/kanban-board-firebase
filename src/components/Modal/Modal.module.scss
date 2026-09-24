@@ -1,0 +1,15 @@
+.Modal {
+  border: none;
+  padding: 24px;
+  color: #1b1b1d;
+  border-radius: 16px;
+  background-color: #ffffff;
+  &::backdrop {
+    background-color: rgba(27, 27, 29, 0.5);
+  }
+}
+
+// Stop the page behind the modal from scrolling while it is open.
+html:has(.Modal[open]) {
+  overflow: hidden;
+}
