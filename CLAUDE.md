@@ -74,4 +74,5 @@ Modal terpusat (desktop) / dialog terpusat dengan margin layar (mobile) di atas 
 - Nama field data pakai camelCase (contoh: `startDate`, bukan `start_date`)
 - Label/teks UI dalam Bahasa Indonesia; nama variabel, fungsi, dan komponen dalam Bahasa Inggris
 - Tidak menggunakan framework CSS (Bootstrap dsb.) — styling murni SCSS Modules per komponen
+- Format kode dengan Prettier (`.prettierrc`): kutip ganda, trailing comma, import diurutkan otomatis (library → `@/…` → relatif, dipisah baris kosong). Jalankan `yarn format` sebelum commit; file Markdown tidak ikut diformat
 - Directive `"use client"` ditulis di baris paling atas file, sebelum import lain, untuk setiap komponen yang memakai hook React atau Firebase SDK
