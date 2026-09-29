@@ -1,33 +1,144 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Kanban Board — Firebase Realtime Database
+
+A simple kanban board built with Next.js and Firebase Realtime Database, with full CRUD (Create, Read, Update, Delete). Made for a Cloud Computing course assignment on Backend as a Service (BaaS): the app has no backend of its own — the browser reads and writes data directly to Firebase.
+
+## Features
+
+- **Create** — add a task through a modal form (title, description, status, priority, start date, deadline).
+- **Read** — tasks are grouped into three columns (To Do / In Progress / Done) and stay in sync in realtime across every open tab and device.
+- **Update** — edit a task's details through the same form, or move it to another column with the status dropdown on its card.
+- **Delete** — remove a task after confirming in a dialog.
+
+The UI text is in Bahasa Indonesia.
+
+## Tech Stack
+
+- [Next.js](https://nextjs.org) 16 (App Router) with React 19 and TypeScript
+- [Firebase JS SDK](https://firebase.google.com/docs/database/web/start) — Realtime Database
+- [React Hook Form](https://react-hook-form.com) for the task form
+- SCSS Modules for styling (no CSS framework)
+- [Font Awesome Pro](https://fontawesome.com) for icons
+- [Yarn](https://classic.yarnpkg.com) 1.x as the package manager
+
+## Prerequisites
+
+- **Node.js 20.9 or newer** (required by Next.js 16)
+- **Yarn 1.22.22** — the version is pinned in `package.json`, so running `corepack enable` once is enough to get it. Don't use `npm install`: it creates a `package-lock.json` that conflicts with `yarn.lock`.
+- **A Font Awesome Pro package token** — the icons come from Font Awesome's private registry, so installing requires a Pro license. You can find the token in your Font Awesome account settings.
+- **A Firebase project** (the free Spark plan is enough)
 
 ## Getting Started
 
-This project uses [Yarn](https://classic.yarnpkg.com) 1.x as its package manager. Don't use `npm install`: it creates a `package-lock.json` that conflicts with `yarn.lock`.
+### 1. Set the Font Awesome token
 
-First, install the dependencies and run the development server:
+`.npmrc` reads the token from the `FONTAWESOME_PACKAGE_TOKEN` environment variable. Without it, **every** `yarn` command fails — not only the install — with:
+
+```
+error Error: Failed to replace env in config: ${FONTAWESOME_PACKAGE_TOKEN}
+```
+
+Export it in your shell (add it to `~/.zshrc` or `~/.bashrc` to keep it):
+
+```bash
+export FONTAWESOME_PACKAGE_TOKEN=your-token-here
+```
+
+Putting it in `.env.local` does **not** work: Yarn reads `.npmrc` before Next.js loads any env file.
+
+### 2. Install dependencies
 
 ```bash
 yarn
+```
+
+### 3. Set up Firebase
+
+1. In the [Firebase Console](https://console.firebase.google.com), create a project.
+2. Go to **Build → Realtime Database → Create Database** and pick a location.
+3. Open the **Rules** tab of the database, replace the rules with the following, and click **Publish**:
+
+   ```json
+   {
+     "rules": {
+       "tasks": {
+         ".read": true,
+         ".write": true
+       }
+     }
+   }
+   ```
+
+   The app has no login, so `/tasks` has to be publicly readable and writable. This is fine for a class demo, but anyone who knows the database URL can change the data — don't use these rules for real data. Avoid relying on "test mode" instead: its rules expire after 30 days, after which the board silently stops loading.
+4. Go to **Project settings → General → Your apps**, add a **Web app** (`</>`), and keep the `firebaseConfig` values it shows you for the next step.
+
+### 4. Configure environment variables
+
+Copy the example file:
+
+```bash
+cp .env.example .env.local
+```
+
+Then fill in each `NEXT_PUBLIC_FIREBASE_*` variable in `.env.local` from the `firebaseConfig` values of step 3. `.env.local` is ignored by Git — never commit it.
+
+Make sure `NEXT_PUBLIC_FIREBASE_DATABASE_URL` is filled in. If you registered the web app before creating the database, `databaseURL` is missing from the config snippet; copy it from the top of the **Data** tab in Realtime Database instead. It looks like `https://<project-id>-default-rtdb.firebaseio.com`, or `https://<project-id>-default-rtdb.<region>.firebasedatabase.app` for locations outside the US.
+
+### 5. Run the development server
+
+```bash
 yarn dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000). If saving a task fails with `PERMISSION_DENIED`, or the board stays empty and the browser console shows a `permission_denied` error, the database rules from step 3 weren't published.
 
-You can start editing the page by modifying `src/app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Command | Description |
+|---|---|
+| `yarn dev` | Start the development server |
+| `yarn build` | Build for production |
+| `yarn start` | Serve the production build (run `yarn build` first) |
+| `yarn lint` | Run ESLint |
+| `yarn format` | Format every file with Prettier (run before committing) |
+| `yarn format:check` | Check formatting without changing files |
 
-## Learn More
+## Data Model
 
-To learn more about Next.js, take a look at the following resources:
+Each task is stored at `/tasks/{taskId}`, where `taskId` is generated by Firebase:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Field | Type | Description |
+|---|---|---|
+| `title` | string | Task title (required) |
+| `description` | string | Short description (optional) |
+| `status` | `"todo"` \| `"in_progress"` \| `"done"` | The column the task appears in |
+| `priority` | `"low"` \| `"medium"` \| `"high"` | Shown as a colored badge on the card |
+| `startDate` | string (`YYYY-MM-DD`) | Start date (required) |
+| `deadline` | string (`YYYY-MM-DD`) | Due date (required, on or after `startDate`) |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Project Structure
 
-## Deploy on Vercel
+```
+src/
+├── app/
+│   ├── fonts/              # Inter font files, loaded with next/font/local
+│   ├── layout.tsx          # Root layout: font and Font Awesome setup
+│   └── page.tsx            # The board (the app's only page)
+├── components/
+│   ├── Button/             # Shared button
+│   ├── ConfirmDialog/      # Confirmation dialog (used for deleting a task)
+│   ├── Modal/              # Base modal built on the native <dialog> element
+│   ├── ModalForm/          # Create/edit task form
+│   └── TaskCard/           # A single task card
+└── services/
+    ├── firebase.ts         # Firebase initialization
+    └── tasksService.ts     # All reads and writes to /tasks
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Components never call Firebase directly — every database access goes through `src/services/tasksService.ts`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Deployment
+
+The app can be deployed to [Vercel](https://vercel.com). In the Vercel project settings, add these environment variables:
+
+- every `NEXT_PUBLIC_FIREBASE_*` variable from `.env.local`
+- `FONTAWESOME_PACKAGE_TOKEN` — Vercel runs `yarn install` during the build, so the install fails without it
