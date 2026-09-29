@@ -21,20 +21,23 @@ import {
 } from "react-hook-form";
 
 import Button from "@/components/Button/Button";
+import FieldError from "@/components/FieldError/FieldError";
 import Modal, {
   type ModalContextValue,
   type ModalProps,
   useModal,
 } from "@/components/Modal/Modal";
 import {
-  type TaskData,
+  type TaskInput,
   type TaskPriority,
   type TaskStatus,
+  maxDescriptionLength,
+  maxTitleLength,
 } from "@/services/tasksService";
 
 import styles from "./ModalForm.module.scss";
 
-export type TaskFormValues = TaskData;
+export type TaskFormValues = TaskInput;
 
 interface ModalFormProps {
   title: string;
@@ -47,11 +50,6 @@ interface ModalFormProps {
 interface TaskFormProps {
   defaultValues: ModalFormProps["defaultValues"];
   onSubmit: ModalFormProps["onSubmit"];
-}
-
-interface FieldErrorProps {
-  id: string;
-  message?: string;
 }
 
 interface FieldControlProps {
@@ -94,18 +92,6 @@ function openDatePicker(event: MouseEvent<HTMLInputElement>): void {
   } catch {
     // Browsers without showPicker() support: the field still works by typing or through its calendar icon.
   }
-}
-
-/**
- * @description Shows a field's validation message, or nothing when the field is valid.
- */
-function FieldError({ id, message }: FieldErrorProps): ReactElement | null {
-  if (!message) return null;
-  return (
-    <p id={id} className={styles.ModalForm__content__field__error}>
-      {message}
-    </p>
-  );
 }
 
 /**
@@ -183,6 +169,7 @@ function TaskForm({ defaultValues, onSubmit }: TaskFormProps): ReactElement {
           id={`${id}-title`}
           type="text"
           data-autofocus
+          maxLength={maxTitleLength}
           placeholder="Contoh: Desain halaman login"
           aria-invalid={Boolean(errors.title)}
           aria-describedby={`${id}-title-error`}
@@ -198,6 +185,7 @@ function TaskForm({ defaultValues, onSubmit }: TaskFormProps): ReactElement {
         <textarea
           id={`${id}-description`}
           rows={3}
+          maxLength={maxDescriptionLength}
           placeholder="Deskripsi singkat task (opsional)"
           {...register("description")}
         />

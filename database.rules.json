@@ -1,0 +1,44 @@
+{
+  "rules": {
+    "tasks": {
+      ".read": "auth != null",
+      "$taskId": {
+        ".write": "auth != null",
+        ".validate": "newData.hasChildren(['title', 'description', 'status', 'priority', 'startDate', 'deadline']) && (newData.hasChild('createdBy') || (data.exists() && !data.hasChild('createdBy')))",
+        "title": {
+          ".validate": "newData.isString() && newData.val().length <= 200 && newData.val().matches(/[^ \\t\\n]/)"
+        },
+        "description": {
+          ".validate": "newData.isString() && newData.val().length <= 2000"
+        },
+        "status": {
+          ".validate": "newData.val() === 'todo' || newData.val() === 'in_progress' || newData.val() === 'done'"
+        },
+        "priority": {
+          ".validate": "newData.val() === 'low' || newData.val() === 'medium' || newData.val() === 'high'"
+        },
+        "startDate": {
+          ".validate": "newData.isString() && newData.val().matches(/^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/) && newData.val() <= newData.parent().child('deadline').val()"
+        },
+        "deadline": {
+          ".validate": "newData.isString() && newData.val().matches(/^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/) && newData.val() >= newData.parent().child('startDate').val()"
+        },
+        "createdBy": {
+          ".validate": "newData.hasChildren(['uid', 'email']) && (data.exists() ? newData.child('uid').val() === data.child('uid').val() && newData.child('email').val() === data.child('email').val() : newData.child('uid').val() === auth.uid && newData.child('email').val() === auth.token.email)",
+          "uid": {
+            ".validate": "newData.isString()"
+          },
+          "email": {
+            ".validate": "newData.isString()"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    }
+  }
+}

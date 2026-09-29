@@ -5,6 +5,7 @@ import {
   getApps,
   initializeApp,
 } from "firebase/app";
+import { type Auth, getAuth } from "firebase/auth";
 import { type Database, getDatabase } from "firebase/database";
 
 const firebaseConfig: FirebaseOptions = {
@@ -18,9 +19,14 @@ const firebaseConfig: FirebaseOptions = {
 };
 
 // Initialized lazily so Firebase only starts in the browser, not while Next.js prerenders the page.
+function getFirebaseApp(): FirebaseApp {
+  return getApps().length ? getApp() : initializeApp(firebaseConfig);
+}
+
 export function getDb(): Database {
-  const app: FirebaseApp = getApps().length
-    ? getApp()
-    : initializeApp(firebaseConfig);
-  return getDatabase(app);
+  return getDatabase(getFirebaseApp());
+}
+
+export function getFirebaseAuth(): Auth {
+  return getAuth(getFirebaseApp());
 }

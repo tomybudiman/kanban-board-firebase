@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "eslint",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "test:rules": "npx -y firebase-tools@15 emulators:exec --only auth,database --project demo-kanban \"node scripts/test-rules.mjs\""
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^7.3.1",

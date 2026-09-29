@@ -1,0 +1,62 @@
+@use "../../styles/form";
+
+.AuthForm {
+  flex: 1;
+  display: flex;
+  padding: 24px;
+  align-items: center;
+  justify-content: center;
+  &__card {
+    width: 100%;
+    padding: 32px;
+    max-width: 400px;
+    border-radius: 16px;
+    background-color: #ffffff;
+    border: solid 1px #e4e2dc;
+    box-shadow: 0 1px 2px rgba(27, 27, 29, 0.05);
+  }
+  &__header {
+    gap: 8px;
+    display: flex;
+    margin-bottom: 24px;
+    flex-direction: column;
+    h1 {
+      color: #1b1b1d;
+      font-size: 24px;
+      font-weight: 700;
+    }
+    p {
+      color: #6b6b70;
+      font-size: 14px;
+      line-height: 20px;
+    }
+  }
+  &__form {
+    gap: 16px;
+    display: flex;
+    flex-direction: column;
+    &__field {
+      @include form.field;
+    }
+    &__error {
+      @include form.alert;
+    }
+    &__submit {
+      width: 100%;
+      margin-top: 8px;
+    }
+  }
+  &__switch {
+    color: #6b6b70;
+    font-size: 14px;
+    margin-top: 24px;
+    text-align: center;
+    a {
+      color: #5750e8;
+      font-weight: 600;
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+  }
+}
