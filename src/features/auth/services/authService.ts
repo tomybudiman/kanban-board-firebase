@@ -8,7 +8,7 @@ import {
   signInWithEmailAndPassword,
 } from "firebase/auth";
 
-import { getFirebaseAuth } from "./firebase";
+import { getFirebaseAuth } from "@/lib/firebase";
 
 export type AuthUser = User;
 

@@ -15,21 +15,21 @@ import {
   useState,
 } from "react";
 
+import Button from "@/components/Button/Button";
+import ConfirmDialog from "@/components/ConfirmDialog/ConfirmDialog";
 import {
   type AuthContextValue,
   useAuth,
-} from "@/components/AuthProvider/AuthProvider";
-import Button from "@/components/Button/Button";
-import ConfirmDialog from "@/components/ConfirmDialog/ConfirmDialog";
+} from "@/features/auth/components/AuthProvider/AuthProvider";
+import authService from "@/features/auth/services/authService";
 import ModalForm, {
   type TaskFormValues,
-} from "@/components/ModalForm/ModalForm";
-import TaskCard from "@/components/TaskCard/TaskCard";
-import authService from "@/services/authService";
+} from "@/features/board/components/ModalForm/ModalForm";
+import TaskCard from "@/features/board/components/TaskCard/TaskCard";
 import taskService, {
   type Task,
   type TaskStatus,
-} from "@/services/tasksService";
+} from "@/features/board/services/tasksService";
 
 import styles from "./Board.module.scss";
 

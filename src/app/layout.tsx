@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { type ReactElement } from "react";
 
-import AuthProvider from "@/components/AuthProvider/AuthProvider";
+import AuthProvider from "@/features/auth/components/AuthProvider/AuthProvider";
 
 import "./globals.scss";
 

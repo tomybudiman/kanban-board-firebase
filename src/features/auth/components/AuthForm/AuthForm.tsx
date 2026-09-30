@@ -10,7 +10,9 @@ import {
 
 import Button from "@/components/Button/Button";
 import FieldError from "@/components/FieldError/FieldError";
-import authService, { getAuthErrorMessage } from "@/services/authService";
+import authService, {
+  getAuthErrorMessage,
+} from "@/features/auth/services/authService";
 
 import styles from "./AuthForm.module.scss";
 

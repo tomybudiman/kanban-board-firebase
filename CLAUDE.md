@@ -13,11 +13,11 @@ Kanban board sederhana untuk tugas mata kuliah Cloud Computing — implementasi 
 - **React Hook Form** untuk form (tanpa library validasi tambahan — aturan validasi ditulis lewat opsi `register`)
 - **Font Awesome Pro** untuk ikon (`@fortawesome/pro-solid-svg-icons` + `@fortawesome/react-fontawesome`), di-setup di `layout.tsx` (`config.autoAddCss = false`). Paket Pro diambil dari registry privat lewat `.npmrc`, yang tokennya dibaca dari env `FONTAWESOME_PACKAGE_TOKEN` — tanpa env ini **semua** perintah `yarn` gagal ("Failed to replace env in config"). Token harus di-export di shell; `.env.local` tidak berpengaruh karena Yarn membaca `.npmrc` sebelum Next.js memuat file env
 - **SCSS Modules** untuk styling per komponen (contoh: `TaskCard.module.scss`) — tanpa framework CSS/UI eksternal seperti Bootstrap
-- **Firebase JS SDK** (Realtime Database + Authentication) — seluruh akses Firebase diisolasi di service layer (`src/services/`); komponen React tidak memanggil Firebase API secara langsung
+- **Firebase JS SDK** (Realtime Database + Authentication) — seluruh akses Firebase diisolasi di service milik tiap fitur (`src/features/<fitur>/services/`) dan `src/lib/firebase.ts`; komponen React tidak memanggil Firebase API secara langsung, dan tidak meng-import apa pun dari `firebase/*`
 
 ## Menjalankan Project
 Project sudah diinisialisasi. Langkah setup lengkap untuk orang lain (Firebase project, sign-in method Email/Password, rules database, env) ada di `README.md`.
-- Kredensial Firebase disimpan di `.env.local` (salin dari `.env.example`, jangan di-commit) dan diinisialisasi di `src/services/firebase.ts`. Semua variabel env Firebase wajib berawalan `NEXT_PUBLIC_`
+- Kredensial Firebase disimpan di `.env.local` (salin dari `.env.example`, jangan di-commit) dan diinisialisasi di `src/lib/firebase.ts`. Semua variabel env Firebase wajib berawalan `NEXT_PUBLIC_`
 - Perintah: `yarn dev`, `yarn build`, `yarn lint`, `yarn format`, `yarn format:check`, `yarn test:rules`
 - **Rules Realtime Database** ada di `database.rules.json` — satu-satunya sumber rules (README hanya merujuk ke file ini). Rules memvalidasi setiap field task (tipe, enum, format tanggal, panjang teks, deadline ≥ tanggal mulai), menolak field lain (`$other`), dan menjaga `createdBy`. Setiap kali struktur data atau batasnya berubah, ubah rules ini **dan** `scripts/test-rules.mjs`, lalu jalankan `yarn test:rules`
 - `yarn test:rules` menjalankan Firebase Emulator (auth + database, project demo `demo-kanban`, konfigurasi di `firebase.json`) lewat `npx firebase-tools@15 emulators:exec`, lalu `scripts/test-rules.mjs` menguji rules lewat REST API emulator. Butuh Java 21+. Tidak menyentuh project Firebase sungguhan. Regex di rules RTDB hanya mendukung sebagian sintaks — misalnya `\S` tidak didukung (emulator menolak rules-nya), jadi pakai kelas karakter seperti `[0-9]` atau `[^ \t\n]`
@@ -58,6 +58,22 @@ Format tanggal `YYYY-MM-DD` adalah format yang dihasilkan `<input type="date">`.
 - Tidak ada redirect di dalam form: setelah `signIn`/`signUp` berhasil, `onAuthStateChanged` memperbarui `AuthProvider`, lalu `AuthGuard` yang memindahkan halaman (`router.replace`, bukan `push`, supaya tombol Back tidak memantul). Registrasi otomatis login, jadi user baru langsung masuk ke papan
 - Belum ada fitur lupa password maupun verifikasi email
 
+## Struktur Folder
+```
+src/
+├── app/           route saja: layout, page, font, globals.scss
+├── components/    UI umum: Button, Modal, ConfirmDialog, FieldError
+├── features/
+│   ├── auth/      components/ (AuthForm, AuthGuard, AuthProvider) + services/authService.ts
+│   └── board/     components/ (Board, TaskCard, ModalForm) + services/tasksService.ts
+├── lib/           firebase.ts (inisialisasi Firebase, dipakai kedua service)
+└── styles/        mixin SCSS bersama (_form.scss)
+```
+- **`components/` vs `features/`:** komponen yang tidak tahu apa-apa soal task, akun, atau Firebase — sehingga bisa dipakai di project lain tanpa diubah — masuk `src/components/`. Komponen yang mengenal domain aplikasi masuk `src/features/<fitur>/components/`, dan service Firebase-nya di `src/features/<fitur>/services/`
+- **Arah ketergantungan:** `app/` → `features/` → `components/`, `lib/`, `styles/`. `components/` dan `lib/` tidak boleh meng-import dari `features/`. Antar fitur hanya satu arah: `board` boleh memakai `auth` (`Board` memakai `useAuth` dan `authService.signOut`), `auth` tidak boleh memakai `board`
+- Tidak ada file `index.ts` (barrel); import selalu ke file-nya langsung, mis. `@/features/board/components/TaskCard/TaskCard`
+- Fitur baru: buat `src/features/<nama>/` dengan `components/` dan, kalau perlu, `services/`; route-nya tetap di `src/app/`
+
 ## Struktur Komponen
 - `src/app/layout.tsx` — root layout: font Inter, setup Font Awesome, `metadata` (dengan `title.template`), dan `<AuthProvider>` yang membungkus seluruh halaman
 - `AuthProvider` (`"use client"`) — berlangganan `authService.subscribeAuth` sekali untuk seluruh app, lalu membagikan `{ user, isLoading }` lewat hook `useAuth()`. `isLoading` bernilai `true` sampai Firebase selesai memulihkan (atau memastikan tidak ada) sesi yang tersimpan di browser
@@ -70,13 +86,13 @@ Format tanggal `YYYY-MM-DD` adalah format yang dihasilkan `<input type="date">`.
 - `ConfirmDialog` (`"use client"`, modal) — dialog konfirmasi **generik** (`role="alertdialog"`). Props: `title`, `description` (ReactNode), `icon` opsional, `variant` (`"default"` / `"danger"` → warna ikon & tombol konfirmasi), `confirmLabel` (default "Konfirmasi"), `cancelLabel` (default "Batal"), `onConfirm` (boleh async). Saat `onConfirm` berjalan tombol disabled + "Memproses..."; berhasil → dialog menutup sendiri; gagal → pesan error tampil & dialog tetap terbuka. Fokus awal di tombol Batal. Dipakai untuk hapus task: ikon tong sampah, judul "Hapus Task Ini?", nama task, tombol Batal / Hapus Task (`variant="danger"`)
 - `Modal` (`"use client"`) — komponen dasar berbasis `<dialog>` native yang dipakai `ModalForm` & `ConfirmDialog`; **controlled** lewat props `isOpen` + `onClose` (bukan method via ref), plus `className`, `role` (`"dialog"` / `"alertdialog"`), dan `aria-label` / `aria-labelledby` / `aria-describedby`. Komponen di dalamnya bisa menutup modal lewat `useModal().close()`. Klik overlay dan tombol Escape juga menutup modal. Saat ditutup, animasi keluar dijalankan dulu (class `Modal--closing`) baru `dialog.close()` dipanggil; isi modal hanya di-render selama modal terbuka. Elemen dengan atribut `data-autofocus` otomatis difokus saat modal terbuka (`autoFocus` React tidak berfungsi di dalam `<dialog>`)
 - `Button` — tombol dasar untuk seluruh app; props `color` (`primary` / `secondary` / `danger` / `warning` / `neutral`), `variant` (`solid` / `outlined` / `text`), `size` (`small` / `medium` / `large`), default `primary` + `solid` + `medium` + `type="button"`; menerima semua props `<button>` native. Area sentuh selalu ≥ 44×44px. Ikon lewat `startIcon` / `endIcon` (tipe `IconDefinition` Font Awesome); tanpa `children` otomatis jadi tombol ikon persegi dan **wajib** diberi `aria-label`
-- `src/services/tasksService.ts` — satu-satunya titik akses ke Firebase RTDB; dipakai lewat default export `taskService` (mis. `taskService.createTask(values)`). Juga mengekspor tipe `Task`, `TaskData` (task tanpa `id`, bentuk data di database), `TaskInput` (6 field yang diisi user — tanpa `id` dan `createdBy`; dipakai sebagai `TaskFormValues` di `ModalForm`), `TaskCreator`, `TaskStatus`, dan `TaskPriority`, serta konstanta `maxTitleLength` (200) dan `maxDescriptionLength` (2000). Fungsi:
+- `src/features/board/services/tasksService.ts` — satu-satunya titik akses ke Firebase RTDB; dipakai lewat default export `taskService` (mis. `taskService.createTask(values)`). Juga mengekspor tipe `Task`, `TaskData` (task tanpa `id`, bentuk data di database), `TaskInput` (6 field yang diisi user — tanpa `id` dan `createdBy`; dipakai sebagai `TaskFormValues` di `ModalForm`), `TaskCreator`, `TaskStatus`, dan `TaskPriority`, serta konstanta `maxTitleLength` (200) dan `maxDescriptionLength` (2000). Fungsi:
   - `subscribeTasks(onChange, onError)` — listener `onValue` ke `/tasks`, mengembalikan fungsi unsubscribe
   - `createTask(task: TaskInput)` — menambahkan `createdBy` dari `currentUser` Firebase Auth (reject kalau belum login), lalu `push` ke `/tasks`; resolve setelah Firebase mengonfirmasi
   - `updateTask(id, changes: Partial<TaskInput>)` — `update`, hanya field yang dikirim (`createdBy` tidak bisa ikut diubah); dipakai dropdown status di `TaskCard` dan mode edit `ModalForm`
   - `deleteTask(id)` — `remove`, dipanggil lewat `ConfirmDialog`
-- `src/services/authService.ts` — satu-satunya titik akses ke Firebase Auth; default export `authService` dengan `subscribeAuth(onChange)` (`onAuthStateChanged`), `signIn(email, password)`, `signUp(email, password)` (langsung login), dan `signOut()`. Juga mengekspor `getAuthErrorMessage(error)` (kode error Firebase → pesan Bahasa Indonesia) dan tipe `AuthUser` (= `User` Firebase), supaya komponen tidak perlu import dari `firebase/auth`
-- `src/services/firebase.ts` — inisialisasi Firebase secara lazy (`getFirebaseApp()`) supaya Firebase hanya berjalan di browser, bukan saat Next.js melakukan prerender; mengekspor `getDb()` dan `getFirebaseAuth()`
+- `src/features/auth/services/authService.ts` — satu-satunya titik akses ke Firebase Auth; default export `authService` dengan `subscribeAuth(onChange)` (`onAuthStateChanged`), `signIn(email, password)`, `signUp(email, password)` (langsung login), dan `signOut()`. Juga mengekspor `getAuthErrorMessage(error)` (kode error Firebase → pesan Bahasa Indonesia) dan tipe `AuthUser` (= `User` Firebase), supaya komponen tidak perlu import dari `firebase/auth`
+- `src/lib/firebase.ts` — inisialisasi Firebase secara lazy (`getFirebaseApp()`) supaya Firebase hanya berjalan di browser, bukan saat Next.js melakukan prerender; mengekspor `getDb()` dan `getFirebaseAuth()`
 
 ## Desain UI
 
@@ -111,8 +127,8 @@ Modal terpusat (desktop) / dialog terpusat dengan margin layar (mobile) di atas 
 - Label/teks UI dalam Bahasa Indonesia; nama variabel, fungsi, dan komponen dalam Bahasa Inggris. Komentar kode dalam Bahasa Inggris; fungsi dan handler diberi JSDoc `/** @description … */`
 - Nama handler mengikuti pola `on<Aksi><Objek>` (mis. `onClickCreateTask`, `onSubmitTask`, `onChangeTaskStatus`)
 - Tipe TypeScript ditulis eksplisit: setiap variabel (`const isClosing: boolean`), parameter, dan return type fungsi — termasuk komponen (`: ReactElement`) serta callback/handler inline (`(event: MouseEvent<HTMLButtonElement>): void => …`). Hook memakai generic (`useState<boolean>`, `useRef<HTMLDialogElement>`); tipe diambil dari export resmi library (mis. `Database`, `Unsubscribe` dari Firebase)
-- Import antar folder `src/` memakai alias `@/` (mis. `@/components/Button/Button`)
-- Tidak menggunakan framework CSS (Bootstrap dsb.) — styling murni SCSS Modules per komponen. Satu folder per komponen berisi `Nama.tsx` + `Nama.module.scss`. Style yang dipakai lebih dari satu komponen disimpan sebagai mixin di `src/styles/` (tidak menghasilkan CSS sendiri) — saat ini `_form.scss` berisi `form.field` (label + input/select/textarea, termasuk state fokus & invalid) dan `form.alert` (kotak error form), dipakai lewat `@use "../../styles/form";` lalu `@include form.field;`
+- Import antar folder `src/` memakai alias `@/` (mis. `@/components/Button/Button`, `@/features/auth/services/authService`)
+- Tidak menggunakan framework CSS (Bootstrap dsb.) — styling murni SCSS Modules per komponen. Satu folder per komponen berisi `Nama.tsx` + `Nama.module.scss`. Style yang dipakai lebih dari satu komponen disimpan sebagai mixin di `src/styles/` (tidak menghasilkan CSS sendiri) — saat ini `_form.scss` berisi `form.field` (label + input/select/textarea, termasuk state fokus & invalid) dan `form.alert` (kotak error form), dipakai lewat `@use` dengan path relatif ke `src/styles/form` (dari komponen fitur: `@use "../../../../styles/form";`) lalu `@include form.field;`
 - Class SCSS memakai pola BEM dengan nesting: blok = nama komponen dalam PascalCase (`.TaskCard`), elemen `&__camelCase`, modifier `&--nilai`; di TSX diakses sebagai `styles.TaskCard__priority`. Selector bersarang yang tidak punya properti sendiri tidak menghasilkan class, sehingga `styles.<nama>` bernilai `undefined`
 - Gaya penulisan SCSS: properti dalam satu blok diurutkan dari baris terpendek ke terpanjang, dan file SCSS tidak diberi komentar
 - Format kode dengan Prettier (`.prettierrc`): kutip ganda, trailing comma, import diurutkan otomatis (library → `@/…` → relatif, dipisah baris kosong), kode warna di SCSS jadi huruf kecil. Jalankan `yarn format` sebelum commit; file Markdown tidak ikut diformat

@@ -1,3 +1,4 @@
+import { type User } from "firebase/auth";
 import {
   type DataSnapshot,
   type Unsubscribe,
@@ -8,8 +9,7 @@ import {
   update,
 } from "firebase/database";
 
-import { type AuthUser } from "./authService";
-import { getDb, getFirebaseAuth } from "./firebase";
+import { getDb, getFirebaseAuth } from "@/lib/firebase";
 
 export type TaskStatus = "todo" | "in_progress" | "done";
 export type TaskPriority = "low" | "medium" | "high";
@@ -63,7 +63,7 @@ export function subscribeTasks(
  * @description Saves a new task under /tasks with an auto-generated key, with the signed-in user attached as createdBy. Resolves once Firebase has confirmed the write, and rejects if nobody is signed in or the write was refused (e.g. by the database rules).
  */
 export async function createTask(task: TaskInput): Promise<void> {
-  const user: AuthUser | null = getFirebaseAuth().currentUser;
+  const user: User | null = getFirebaseAuth().currentUser;
   if (!user) {
     throw new Error("belum masuk ke akun");
   }

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { type ReactElement } from "react";
 
-import AuthForm from "@/components/AuthForm/AuthForm";
+import AuthForm from "@/features/auth/components/AuthForm/AuthForm";
 
 export const metadata: Metadata = {
   title: "Daftar",

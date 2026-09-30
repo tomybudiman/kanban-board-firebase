@@ -8,7 +8,7 @@ import { type ReactElement, type ReactNode, useEffect } from "react";
 import {
   type AuthContextValue,
   useAuth,
-} from "@/components/AuthProvider/AuthProvider";
+} from "@/features/auth/components/AuthProvider/AuthProvider";
 
 import styles from "./AuthGuard.module.scss";
 

@@ -10,7 +10,9 @@ import {
   useState,
 } from "react";
 
-import authService, { type AuthUser } from "@/services/authService";
+import authService, {
+  type AuthUser,
+} from "@/features/auth/services/authService";
 
 export interface AuthContextValue {
   user: AuthUser | null;

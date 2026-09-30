@@ -9,7 +9,7 @@ import {
   type Task,
   type TaskPriority,
   type TaskStatus,
-} from "@/services/tasksService";
+} from "@/features/board/services/tasksService";
 
 import styles from "./TaskCard.module.scss";
 

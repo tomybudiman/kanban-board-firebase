@@ -33,7 +33,7 @@ import {
   type TaskStatus,
   maxDescriptionLength,
   maxTitleLength,
-} from "@/services/tasksService";
+} from "@/features/board/services/tasksService";
 
 import styles from "./ModalForm.module.scss";
 

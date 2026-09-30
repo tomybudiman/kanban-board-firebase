@@ -160,26 +160,37 @@ src/
 │   └── (board)/            # Pages for signed-in users
 │       ├── layout.tsx      # Sends signed-out users to /login
 │       └── page.tsx        # The board
-├── components/
-│   ├── AuthForm/           # Login and register form
-│   ├── AuthGuard/          # Redirects based on sign-in state, used by the two layouts above
-│   ├── AuthProvider/       # Shares the signed-in user with every page (useAuth)
-│   ├── Board/              # The board: columns, task cards, and the task modals
+├── components/             # Generic UI, not tied to any feature
 │   ├── Button/             # Shared button
 │   ├── ConfirmDialog/      # Confirmation dialog (used for deleting a task)
 │   ├── FieldError/         # Validation message under a form field
-│   ├── Modal/              # Base modal built on the native <dialog> element
-│   ├── ModalForm/          # Create/edit task form
-│   └── TaskCard/           # A single task card
-├── styles/
-│   └── _form.scss          # Shared form field and error styles (SCSS mixins)
-└── services/
-    ├── firebase.ts         # Firebase initialization
-    ├── authService.ts      # Register, login, logout, and sign-in state
-    └── tasksService.ts     # All reads and writes to /tasks
+│   └── Modal/              # Base modal built on the native <dialog> element
+├── features/               # One folder per feature: its components and its Firebase service
+│   ├── auth/
+│   │   ├── components/
+│   │   │   ├── AuthForm/       # Login and register form
+│   │   │   ├── AuthGuard/      # Redirects based on sign-in state, used by the two layouts above
+│   │   │   └── AuthProvider/   # Shares the signed-in user with every page (useAuth)
+│   │   └── services/
+│   │       └── authService.ts  # Register, login, logout, and sign-in state
+│   └── board/
+│       ├── components/
+│       │   ├── Board/          # The board: columns, task cards, and the task modals
+│       │   ├── ModalForm/      # Create/edit task form
+│       │   └── TaskCard/       # A single task card
+│       └── services/
+│           └── tasksService.ts # All reads and writes to /tasks
+├── lib/
+│   └── firebase.ts         # Firebase initialization, shared by both services
+└── styles/
+    └── _form.scss          # Shared form field and error styles (SCSS mixins)
 ```
 
-Components never call Firebase directly — every access goes through `src/services/authService.ts` or `src/services/tasksService.ts`.
+How the folders depend on each other:
+- `app/` only defines routes; each page renders a component from `features/`.
+- `features/` may use `components/`, `lib/`, and `styles/`. The `board` feature uses `auth` (to show the signed-in user and to sign out), never the other way around.
+- `components/` knows nothing about tasks, accounts, or Firebase, so its components could be reused in another project as they are.
+- Components never call Firebase directly — every access goes through a feature's service (`authService.ts` or `tasksService.ts`).
 
 ## Deployment
 
