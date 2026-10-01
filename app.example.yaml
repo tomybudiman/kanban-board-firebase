@@ -1,0 +1,31 @@
+# App Engine (standard environment) configuration.
+# Copy this file to app.yaml and fill in the values. app.yaml is ignored by Git because it contains the Font Awesome token.
+
+runtime: nodejs22
+instance_class: F1
+
+# Keeps the app within a single instance, so it cannot scale up and add cost.
+automatic_scaling:
+  max_instances: 1
+
+# Starts Next.js directly instead of through `yarn start`: Yarn reads .npmrc first, and that fails at runtime because the Font Awesome token only exists during the build.
+entrypoint: node node_modules/next/dist/bin/next start
+
+# Only available while Cloud Build installs the dependencies and runs the `gcp-build` script; not set on the running app.
+# The NEXT_PUBLIC_* values are the same as in .env.local. Next.js puts them into the JavaScript bundle at build time.
+build_env_variables:
+  FONTAWESOME_PACKAGE_TOKEN: "your-font-awesome-package-token"
+  NEXT_PUBLIC_FIREBASE_API_KEY: ""
+  NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ""
+  NEXT_PUBLIC_FIREBASE_DATABASE_URL: ""
+  NEXT_PUBLIC_FIREBASE_PROJECT_ID: ""
+  NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ""
+  NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ""
+  NEXT_PUBLIC_FIREBASE_APP_ID: ""
+
+handlers:
+  # Every request goes to the Next.js server, and HTTP is redirected to HTTPS.
+  - url: /.*
+    secure: always
+    redirect_http_response_code: 301
+    script: auto

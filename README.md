@@ -107,6 +107,7 @@ If something doesn't work:
 | `yarn dev` | Start the development server |
 | `yarn build` | Build for production |
 | `yarn start` | Serve the production build (run `yarn build` first) |
+| `yarn gcp-build` | Production build with webpack, run by App Engine during a deploy |
 | `yarn lint` | Run ESLint |
 | `yarn format` | Format every file with Prettier (run before committing) |
 | `yarn format:check` | Check formatting without changing files |
@@ -145,6 +146,8 @@ User accounts live in Firebase Authentication. Each task is stored at `/tasks/{t
 ## Project Structure
 
 ```
+.gcloudignore               # Files App Engine deploys leave out
+app.example.yaml            # App Engine config template (copy to app.yaml, which is ignored by Git)
 database.rules.json         # Realtime Database rules (publish these to Firebase)
 firebase.json               # Firebase CLI config: rules file and emulator ports
 scripts/
@@ -192,9 +195,46 @@ How the folders depend on each other:
 - `components/` knows nothing about tasks, accounts, or Firebase, so its components could be reused in another project as they are.
 - Components never call Firebase directly — every access goes through a feature's service (`authService.ts` or `tasksService.ts`).
 
-## Deployment
+## Deployment (Google App Engine)
 
-The app can be deployed to [Vercel](https://vercel.com). In the Vercel project settings, add these environment variables:
+The app runs as a Next.js server on the [App Engine standard environment](https://cloud.google.com/appengine/docs/standard/nodejs/runtime) (Node.js 22 runtime). It can use the same Google Cloud project as Firebase.
 
-- every `NEXT_PUBLIC_FIREBASE_*` variable from `.env.local`
-- `FONTAWESOME_PACKAGE_TOKEN` — Vercel runs `yarn install` during the build, so the install fails without it
+### One-time setup
+
+Requires the [Google Cloud CLI](https://cloud.google.com/sdk/docs/install) (`gcloud`), signed in with an account that owns the project.
+
+1. Make sure billing is enabled for the project — App Engine builds the app with Cloud Build, which needs it.
+2. Create the App Engine application. **The region cannot be changed afterwards**:
+   ```bash
+   gcloud app create --project <project-id> --region asia-southeast2
+   ```
+3. Enable the Cloud Build API:
+   ```bash
+   gcloud services enable cloudbuild.googleapis.com --project <project-id>
+   ```
+
+### Deploying
+
+1. Create `app.yaml` from the template and fill in every value under `build_env_variables`: your Font Awesome token, and the `NEXT_PUBLIC_FIREBASE_*` values from `.env.local`.
+   ```bash
+   cp app.example.yaml app.yaml
+   ```
+   `app.yaml` is ignored by Git because it contains the Font Awesome token — never commit it.
+2. Deploy, then open the app:
+   ```bash
+   gcloud app deploy --project <project-id>
+   gcloud app browse --project <project-id>
+   ```
+   The URL looks like `https://<project-id>.<region-code>.r.appspot.com`.
+
+What happens during a deploy:
+- `gcloud` uploads only the files needed to build and run the app; everything else is listed in `.gcloudignore`. `.env.local` is never uploaded, which is why the Firebase config goes into `app.yaml` instead.
+- Cloud Build runs `yarn install` and then the `gcp-build` script with the `build_env_variables`, then removes the devDependencies. The `NEXT_PUBLIC_*` values are built into the JavaScript bundle at this point, so changing them requires a new deploy.
+- `gcp-build` is required: for Yarn projects, App Engine does not run the `build` script on its own. Without it the deploy still succeeds, but every page returns 502/503 and the logs show `Could not find a production build in the '.next' directory`.
+- `gcp-build` builds with webpack (`next build --webpack`) instead of Turbopack. On App Engine, `node_modules` is a symlink to a folder outside the project, and Turbopack fails on that with `Symlink [project]/node_modules is invalid, it points out of the filesystem root`.
+- The app starts with `node node_modules/next/dist/bin/next start` rather than `yarn start`: Yarn reads `.npmrc` first, and that fails on the running app because the Font Awesome token only exists during the build.
+- `max_instances: 1` keeps the app on a single F1 instance, which stays within the free daily instance hours for a small app.
+
+If something goes wrong:
+- **See the server logs:** `gcloud app logs tail --project <project-id>`.
+- **Logging in fails with `auth/unauthorized-domain`:** add the `appspot.com` domain in Firebase Console → Authentication → Settings → Authorized domains.

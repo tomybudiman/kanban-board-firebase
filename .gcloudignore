@@ -1,0 +1,33 @@
+# Files that `gcloud app deploy` does not upload. App Engine only needs what it takes to install, build, and run the app:
+# package.json, yarn.lock, .npmrc, next.config.ts, tsconfig.json, src/, public/, and app.yaml.
+
+.gcloudignore
+.git
+.gitignore
+.idea/
+
+# Rebuilt on Cloud Build
+node_modules/
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# Local config: the build gets its values from build_env_variables in app.yaml instead
+.env*
+app.example.yaml
+
+# Not needed to build or run the app
+CLAUDE.md
+README.md
+database.rules.json
+firebase.json
+scripts/
+eslint.config.mjs
+.prettierrc
+.prettierignore
+
+# Logs and OS files
+*-debug.log*
+.DS_Store
+._*

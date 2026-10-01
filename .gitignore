@@ -46,3 +46,6 @@ next-env.d.ts
 firebase-debug.log*
 database-debug.log*
 .firebase/
+
+# app engine (app.yaml holds the Font Awesome token; app.example.yaml is the committed template)
+/app.yaml
