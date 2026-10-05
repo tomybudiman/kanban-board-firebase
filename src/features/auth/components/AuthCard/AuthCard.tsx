@@ -4,7 +4,7 @@ import styles from "./AuthCard.module.scss";
 
 interface AuthCardProps {
   title: string;
-  subtitle: ReactNode;
+  subtitle?: ReactNode;
   children: ReactNode;
 }
 
@@ -22,7 +22,7 @@ export default function AuthCard({
       <div className={styles.AuthCard__panel}>
         <div className={styles.AuthCard__header}>
           <h1>{title}</h1>
-          <p>{subtitle}</p>
+          {subtitle && <p>{subtitle}</p>}
         </div>
         {children}
       </div>

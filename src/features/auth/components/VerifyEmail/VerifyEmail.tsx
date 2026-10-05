@@ -148,21 +148,13 @@ export default function VerifyEmail(): ReactElement {
 
   // Main Render
   return (
-    <AuthCard
-      title="Verifikasi Email"
-      subtitle="Akun sudah terdaftar. Cek email untuk verifikasi sebelum memakai papan."
-    >
+    <AuthCard title="Verifikasi Email">
       <div className={styles.VerifyEmail}>
-        <div className={styles.VerifyEmail__instructions}>
-          <p className={styles.VerifyEmail__instructions__text}>
-            Verifikasi <strong>{user?.email}</strong> lewat link yang dikirim
-            Firebase ke email tersebut. Klik link-nya, lalu kembali ke halaman
-            ini.
-          </p>
-          <p className={styles.VerifyEmail__instructions__hint}>
-            Belum menerima email? Cek folder spam, atau kirim ulang emailnya.
-          </p>
-        </div>
+        <p className={styles.VerifyEmail__instructionText}>
+          Verifikasi <strong>{user?.email}</strong> lewat link yang dikirim
+          Firebase ke email tersebut. Klik link-nya, lalu kembali ke halaman
+          ini.
+        </p>
         {message && (
           <p
             role={message.type === "error" ? "alert" : "status"}
@@ -199,9 +191,9 @@ export default function VerifyEmail(): ReactElement {
             {resendLabel}
           </Button>
           <Button
-            size="medium"
-            color="neutral"
+            size="large"
             variant="text"
+            color="neutral"
             startIcon={faArrowRightFromBracket}
             onClick={(): void => {
               void onClickSignOut();

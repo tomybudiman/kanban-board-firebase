@@ -4,21 +4,11 @@
   gap: 16px;
   display: flex;
   flex-direction: column;
-  &__instructions {
-    gap: 8px;
-    display: flex;
-    flex-direction: column;
-    &__text {
-      color: #1b1b1d;
-      font-size: 14px;
-      line-height: 20px;
-      overflow-wrap: anywhere;
-    }
-    &__hint {
-      color: #6b6b70;
-      font-size: 14px;
-      line-height: 20px;
-    }
+  &__instructionText {
+    color: #1b1b1d;
+    font-size: 14px;
+    line-height: 20px;
+    overflow-wrap: anywhere;
   }
   &__error {
     @include form.alert;
@@ -33,7 +23,6 @@
   &__actions {
     gap: 8px;
     display: flex;
-    margin-top: 8px;
     flex-direction: column;
     &__button {
       width: 100%;
