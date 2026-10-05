@@ -1,9 +1,9 @@
 {
   "rules": {
     "tasks": {
-      ".read": "auth != null",
+      ".read": "auth != null && auth.token.email_verified === true",
       "$taskId": {
-        ".write": "auth != null",
+        ".write": "auth != null && auth.token.email_verified === true",
         ".validate": "newData.hasChildren(['title', 'description', 'status', 'priority', 'startDate', 'deadline']) && (newData.hasChild('createdBy') || (data.exists() && !data.hasChild('createdBy')))",
         "title": {
           ".validate": "newData.isString() && newData.val().length <= 200 && newData.val().matches(/[^ \\t\\n]/)"
@@ -34,6 +34,22 @@
           "$other": {
             ".validate": false
           }
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid && newData.exists()",
+        ".validate": "newData.hasChildren(['email', 'isVerified'])",
+        "email": {
+          ".validate": "newData.isString() && newData.val() === auth.token.email"
+        },
+        "isVerified": {
+          ".validate": "newData.isBoolean() && newData.val() === (auth.token.email_verified === true)"
         },
         "$other": {
           ".validate": false

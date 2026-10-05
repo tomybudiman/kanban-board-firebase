@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 ## Tentang Proyek
-Kanban board sederhana untuk tugas mata kuliah Cloud Computing — implementasi Backend as a Service (BaaS) menggunakan Firebase Realtime Database dengan fungsi CRUD penuh (Create, Read, Update, Delete), plus Firebase Authentication (email & password) untuk registrasi dan login.
+Kanban board sederhana untuk tugas mata kuliah Cloud Computing — implementasi Backend as a Service (BaaS) menggunakan Firebase Realtime Database dengan fungsi CRUD penuh (Create, Read, Update, Delete), plus Firebase Authentication (email & password) untuk registrasi dan login dengan verifikasi email.
 
 ## Repository
 - **Nama:** `kanban-board-firebase` (GitHub: `tomybudiman/kanban-board-firebase`)
@@ -19,8 +19,8 @@ Kanban board sederhana untuk tugas mata kuliah Cloud Computing — implementasi 
 Project sudah diinisialisasi. Langkah setup lengkap untuk orang lain (Firebase project, sign-in method Email/Password, rules database, env) ada di `README.md`.
 - Kredensial Firebase disimpan di `.env.local` (salin dari `.env.example`, jangan di-commit) dan diinisialisasi di `src/lib/firebase.ts`. Semua variabel env Firebase wajib berawalan `NEXT_PUBLIC_`
 - Perintah: `yarn dev`, `yarn build`, `yarn lint`, `yarn format`, `yarn format:check`, `yarn test:rules`
-- **Rules Realtime Database** ada di `database.rules.json` — satu-satunya sumber rules (README hanya merujuk ke file ini). Rules memvalidasi setiap field task (tipe, enum, format tanggal, panjang teks, deadline ≥ tanggal mulai), menolak field lain (`$other`), dan menjaga `createdBy`. Setiap kali struktur data atau batasnya berubah, ubah rules ini **dan** `scripts/test-rules.mjs`, lalu jalankan `yarn test:rules`
-- `yarn test:rules` menjalankan Firebase Emulator (auth + database, project demo `demo-kanban`, konfigurasi di `firebase.json`) lewat `npx firebase-tools@15 emulators:exec`, lalu `scripts/test-rules.mjs` menguji rules lewat REST API emulator. Butuh Java 21+. Tidak menyentuh project Firebase sungguhan. Regex di rules RTDB hanya mendukung sebagian sintaks — misalnya `\S` tidak didukung (emulator menolak rules-nya), jadi pakai kelas karakter seperti `[0-9]` atau `[^ \t\n]`
+- **Rules Realtime Database** ada di `database.rules.json` — satu-satunya sumber rules (README hanya merujuk ke file ini). Rules mensyaratkan **email terverifikasi** (`auth.token.email_verified`) untuk membaca/menulis `/tasks`, memvalidasi setiap field task (tipe, enum, format tanggal, panjang teks, deadline ≥ tanggal mulai), menolak field lain (`$other`), menjaga `createdBy`, dan membatasi `/users/{uid}` hanya untuk pemiliknya dengan `isVerified` yang wajib sama dengan status verifikasi di token. Setiap kali struktur data atau batasnya berubah, ubah rules ini **dan** `scripts/test-rules.mjs`, lalu jalankan `yarn test:rules`
+- `yarn test:rules` menjalankan Firebase Emulator (auth + database, project demo `demo-kanban`, konfigurasi di `firebase.json`) lewat `npx firebase-tools@15 emulators:exec`, lalu `scripts/test-rules.mjs` menguji rules lewat REST API emulator (60 kasus; akun uji diverifikasi lewat kode verifikasi yang disimpan emulator di `/emulator/v1/projects/<id>/oobCodes`, lalu login ulang supaya token-nya membawa `email_verified: true`). Butuh Java 21+. Tidak menyentuh project Firebase sungguhan. Regex di rules RTDB hanya mendukung sebagian sintaks — misalnya `\S` tidak didukung (emulator menolak rules-nya), jadi pakai kelas karakter seperti `[0-9]` atau `[^ \t\n]`
 - Deploy rules: `npx firebase-tools@15 deploy --only database --project <project-id>`, atau salin isi file ke tab Rules di Console
 - **Deploy aplikasi: Google App Engine standard**, runtime `nodejs22`, project yang sama dengan Firebase (`alpha-bravo-00001`, region `asia-southeast2` — sudah dibuat dan permanen). Perintah: `gcloud app deploy`. Konfigurasinya di `app.yaml`, yang **di-ignore git** karena berisi token Font Awesome; template yang di-commit adalah `app.example.yaml` — setiap mengubah `app.yaml`, samakan juga strukturnya di template
   - Token Font Awesome dan semua `NEXT_PUBLIC_FIREBASE_*` diberikan lewat `build_env_variables` (hanya ada saat Cloud Build menjalankan `yarn install` + script `gcp-build`). `.env.local` tidak ikut ter-upload, dan nilai `NEXT_PUBLIC_*` tertanam di bundle saat build, jadi perubahan nilainya butuh deploy ulang
@@ -30,6 +30,15 @@ Project sudah diinisialisasi. Langkah setup lengkap untuk orang lain (Firebase p
   - `.gcloudignore` menentukan file yang di-upload: hanya `app.yaml`, `.npmrc`, `package.json`, `yarn.lock`, `next.config.ts`, `tsconfig.json`, `src/`, `public/`. Cek dengan `gcloud meta list-files-for-upload`
   - `automatic_scaling.max_instances: 1` membatasi biaya ke satu instance F1
 - Tambah paket: `yarn add <paket>` / `yarn add -D <paket>`
+
+## Dokumentasi Per Fase
+Riwayat pengerjaan ada di `docs/`, satu dokumen per fase, ditulis dalam **Bahasa Inggris** dan ditautkan dari bagian "Development Phases" di README:
+- `docs/phase-1-kanban-crud.md` — persiapan project + CRUD kanban (23–24 Sep 2026)
+- `docs/phase-2-authentication.md` — login/registrasi, `createdBy`, rules database + tes (29–30 Sep 2026)
+- `docs/phase-3-app-engine-deployment.md` — deploy ke App Engine (30 Sep – 1 Okt 2026)
+- `docs/phase-4-email-verification.md` — verifikasi email saat registrasi, halaman `/verify-email`, data `/users/{uid}` (Okt 2026; materi Module 3 – Lecture Note 10 "Webmailer using Firebase")
+
+Setiap dokumen menggambarkan kondisi **saat fase itu selesai** (struktur kode terbaru tetap di README), dengan pola bagian yang sama: tujuan, hasil, keputusan teknis, masalah & solusi, cara menguji, keterbatasan, dan daftar commit. Saat menyelesaikan fase baru, tambahkan `docs/phase-N-<nama>.md` dengan pola yang sama, lalu tautkan dari README — jangan menulis ulang dokumen fase sebelumnya kecuali ada fakta yang salah.
 
 ## Struktur Data
 Path Realtime Database: `/tasks/{taskId}` — `taskId` adalah key otomatis dari `push()`, bukan field di dalam task. Urutan kartu dalam satu kolom mengikuti urutan key tersebut (kronologis, task terlama di atas).
@@ -44,7 +53,16 @@ Path Realtime Database: `/tasks/{taskId}` — `taskId` adalah key otomatis dari 
 | `deadline` | string (`YYYY-MM-DD`) | Tanggal target penyelesaian (wajib, ≥ `startDate`) |
 | `createdBy` | object `{ uid, email }` | Akun pembuat task — diisi otomatis oleh `createTask` dari user yang sedang login, tidak pernah diubah sesudahnya (rules database menolak perubahannya). Tidak ada di task yang dibuat sebelum fitur login, jadi bertipe opsional |
 
-Format tanggal `YYYY-MM-DD` adalah format yang dihasilkan `<input type="date">`. Akun user disimpan di Firebase Authentication, bukan di Realtime Database. Papan bersifat **bersama**: semua user yang login melihat, mengedit, dan menghapus task yang sama.
+Path data user: `/users/{uid}` — `uid` = ID akun di Firebase Authentication (bukan `md5(email)` seperti di slide kuliah: `uid` stabil, cocok dengan rules `auth.uid === $uid`, dan sama dengan `createdBy.uid` di task).
+
+| Field | Tipe | Keterangan |
+|---|---|---|
+| `email` | string | Email akun (wajib sama dengan `auth.token.email`) |
+| `isVerified` | boolean | `false` setelah registrasi, `true` setelah link verifikasi dibuka. Wajib sama dengan `auth.token.email_verified` saat ditulis |
+
+Dibuat/diperbarui oleh `usersService.syncUserProfile` setiap kali status login atau token berubah (termasuk untuk akun lama yang belum punya data). Aplikasi tidak membaca `isVerified` untuk menentukan akses — sumber kebenarannya token Firebase Auth; `/users` adalah cerminan yang diminta tugas.
+
+Format tanggal `YYYY-MM-DD` adalah format yang dihasilkan `<input type="date">`. Akun user disimpan di Firebase Authentication; `/users/{uid}` hanya menyimpan email dan status verifikasinya. Papan bersifat **bersama**: semua user yang login melihat, mengedit, dan menghapus task yang sama.
 
 ## Pemetaan Fungsi CRUD
 - **Create** — form/modal penambahan task baru, nilai default `status: "todo"`; `createdBy` ditambahkan otomatis
@@ -55,15 +73,18 @@ Format tanggal `YYYY-MM-DD` adalah format yang dihasilkan `<input type="date">`.
 ## Routing & Autentikasi
 | Route | File | Akses |
 |---|---|---|
-| `/` | `src/app/(board)/page.tsx` → `<Board />` | Hanya user yang login; selain itu dipindah ke `/login` |
-| `/login` | `src/app/(auth)/login/page.tsx` → `<AuthForm mode="login" />` | Hanya user yang belum login; selain itu dipindah ke `/` |
-| `/register` | `src/app/(auth)/register/page.tsx` → `<AuthForm mode="register" />` | Sama seperti `/login` |
+| `/` | `src/app/(board)/page.tsx` → `<Board />` | `verified`: login **dan** email terverifikasi |
+| `/login` | `src/app/(auth)/login/page.tsx` → `<AuthForm mode="login" />` | `guest`: belum login |
+| `/register` | `src/app/(auth)/register/page.tsx` → `<AuthForm mode="register" />` | `guest` |
+| `/verify-email` | `src/app/(verify)/verify-email/page.tsx` → `<VerifyEmail />` | `unverified`: login tapi email belum terverifikasi |
 
-- `(board)` dan `(auth)` adalah route group — nama dalam kurung tidak masuk URL. Layout masing-masing grup hanya membungkus halaman dengan `<AuthGuard access="user">` / `<AuthGuard access="guest">`, jadi aturan akses cukup ditulis sekali per grup
+- `(board)`, `(auth)`, dan `(verify)` adalah route group — nama dalam kurung tidak masuk URL. Layout masing-masing grup hanya membungkus halaman dengan `<AuthGuard access="verified">` / `"guest"` / `"unverified"`, jadi aturan akses cukup ditulis sekali per grup. User yang membuka halaman yang bukan untuknya dipindah ke halaman "rumah" statusnya: `guest` → `/login`, `unverified` → `/verify-email`, `verified` → `/`
 - File `page.tsx` dan `layout.tsx` sengaja tetap Server Component (tanpa `"use client"`) supaya bisa mengekspor `metadata`. Judul tab: `title.template` di root layout (`"%s · Kanban Board"`), halaman cukup mengisi namanya sendiri (`"Masuk"`, `"Daftar"`). Isi interaktif diletakkan di komponen client (`Board`, `AuthForm`)
 - Guard berjalan di browser, bukan di `proxy.ts` (nama baru `middleware.ts` sejak Next.js 16): Firebase menyimpan sesi login di IndexedDB browser, bukan cookie, jadi server tidak tahu siapa yang login. HTML statis tiap route hanya berisi layar "Memuat...". Pengaman data yang sebenarnya adalah rules database (`auth != null`)
-- Tidak ada redirect di dalam form: setelah `signIn`/`signUp` berhasil, `onAuthStateChanged` memperbarui `AuthProvider`, lalu `AuthGuard` yang memindahkan halaman (`router.replace`, bukan `push`, supaya tombol Back tidak memantul). Registrasi otomatis login, jadi user baru langsung masuk ke papan
-- Belum ada fitur lupa password maupun verifikasi email
+- Tidak ada redirect di dalam form: setelah `signIn`/`signUp` berhasil, `onIdTokenChanged` (lewat `authService.subscribeAuth`) memperbarui `AuthProvider`, lalu `AuthGuard` yang memindahkan halaman (`router.replace`, bukan `push`, supaya tombol Back tidak memantul). Registrasi otomatis login, jadi user baru langsung dipindah ke `/verify-email` (belum terverifikasi), bukan ke papan
+- **Verifikasi email** (fase 4): `signUp` membuat akun lalu memanggil `sendEmailVerification` dengan `url: <origin>/verify-email` dan `handleCodeInApp: false` — link di email membuka halaman verifikasi bawaan Firebase, lalu tombol "Continue" membawa user ke `/verify-email`. Email dikirim dalam Bahasa Indonesia (`auth.languageCode = "id"` di `src/lib/firebase.ts`). Domain `continueUrl` wajib ada di Firebase **Authorized domains** (`localhost` sudah ada; domain App Engine harus ditambahkan) — kalau tidak, error `auth/unauthorized-continue-uri`
+- **Status verifikasi diambil dari token, bukan dari `user.emailVerified`.** Rules membaca claim `email_verified` di ID token. Saat link dibuka di tab lain, Firebase memperbarui `user.emailVerified` ketika halaman dimuat, tapi token tersimpan masih `false` — kalau aplikasi memakai `user.emailVerified`, papan terbuka padahal `/tasks` ditolak (`permission_denied`). `authService.hasVerifiedEmail(user)` membaca claim token dan meminta token baru kalau keduanya berbeda. `subscribeAuth` memakai `onIdTokenChanged` (bukan `onAuthStateChanged`) supaya token baru ikut memperbarui state
+- Belum ada fitur lupa password
 
 ## Struktur Folder
 ```
@@ -71,7 +92,7 @@ src/
 ├── app/           route saja: layout, page, font, globals.scss
 ├── components/    UI umum: Button, Modal, ConfirmDialog, FieldError
 ├── features/
-│   ├── auth/      components/ (AuthForm, AuthGuard, AuthProvider) + services/authService.ts
+│   ├── auth/      components/ (AuthCard, AuthForm, AuthGuard, AuthProvider, VerifyEmail) + services/ (authService.ts, usersService.ts)
 │   └── board/     components/ (Board, TaskCard, ModalForm) + services/tasksService.ts
 ├── lib/           firebase.ts (inisialisasi Firebase, dipakai kedua service)
 └── styles/        mixin SCSS bersama (_form.scss)
@@ -83,9 +104,11 @@ src/
 
 ## Struktur Komponen
 - `src/app/layout.tsx` — root layout: font Inter, setup Font Awesome, `metadata` (dengan `title.template`), dan `<AuthProvider>` yang membungkus seluruh halaman
-- `AuthProvider` (`"use client"`) — berlangganan `authService.subscribeAuth` sekali untuk seluruh app, lalu membagikan `{ user, isLoading }` lewat hook `useAuth()`. `isLoading` bernilai `true` sampai Firebase selesai memulihkan (atau memastikan tidak ada) sesi yang tersimpan di browser
-- `AuthGuard` (`"use client"`) — prop `access` (`"user"` / `"guest"`). Menampilkan halaman hanya ke user yang sesuai, memindahkan sisanya lewat `router.replace`, dan menampilkan layar "Memuat..." (`role="status"`) selama `isLoading` atau saat redirect sedang berjalan, supaya halaman yang salah tidak sempat terlihat
-- `AuthForm` (`"use client"`) — form login/registrasi berbasis React Hook Form, prop `mode` (`"login"` / `"register"`). Login: email + password. Registrasi: email + password (minimal 6 karakter, batas minimum Firebase) + konfirmasi password. Error dari Firebase diterjemahkan lewat `getAuthErrorMessage` dan tampil di atas tombol; email tidak terdaftar dan password salah sengaja menghasilkan pesan yang sama ("Email atau password salah."). Di bawah form ada link ke halaman satunya (`next/link`)
+- `AuthProvider` (`"use client"`) — berlangganan `authService.subscribeAuth` sekali untuk seluruh app, lalu membagikan `{ user, isEmailVerified, isLoading }` lewat hook `useAuth()`. `isEmailVerified` dihitung dengan `authService.hasVerifiedEmail` (claim token) dan disimpan terpisah dari `user`, karena Firebase memperbarui objek user yang sama (tidak memicu render ulang). Karena pengecekan token asynchronous, hanya perubahan terbaru yang boleh mengubah state (counter `latestChange`), supaya hasil lama tidak menimpa sign-out. Setiap perubahan juga memanggil `usersService.syncUserProfile`. `isLoading` bernilai `true` sampai Firebase selesai memulihkan (atau memastikan tidak ada) sesi yang tersimpan di browser
+- `AuthGuard` (`"use client"`) — prop `access` (`"guest"` / `"unverified"` / `"verified"`). Menampilkan halaman hanya ke user dengan status yang sama, memindahkan sisanya lewat `router.replace`, dan menampilkan layar "Memuat..." (`role="status"`) selama `isLoading` atau saat redirect sedang berjalan, supaya halaman yang salah tidak sempat terlihat
+- `AuthCard` — kartu putih di tengah layar (judul, subjudul, isi) yang dipakai `AuthForm` dan `VerifyEmail`; tanpa `"use client"`
+- `AuthForm` (`"use client"`) — form login/registrasi berbasis React Hook Form, prop `mode` (`"login"` / `"register"`), dibungkus `AuthCard`. Login: email + password. Registrasi: email + password (minimal 6 karakter, batas minimum Firebase) + konfirmasi password. Error dari Firebase diterjemahkan lewat `getAuthErrorMessage` dan tampil di atas tombol; email tidak terdaftar dan password salah sengaja menghasilkan pesan yang sama ("Email atau password salah."). Di bawah form ada link ke halaman satunya (`next/link`)
+- `VerifyEmail` (`"use client"`) — isi `/verify-email`. Saat dibuka tepat setelah registrasi, mengambil hasil pengiriman email pertama lewat `authService.takeSignUpVerificationEmail()` (hanya bisa diambil sekali) dan menampilkan "Registrasi berhasil! Cek email untuk verifikasi." atau error-nya. Teks instruksi sengaja tidak mengklaim email baru saja dikirim (akun lama mungkin belum pernah menerimanya). Isi: email user, instruksi, tombol **Saya Sudah Verifikasi** (`refreshVerificationStatus`; kalau belum: "Email belum diverifikasi…"), **Kirim Ulang Email** (`resendVerificationEmail`, lalu nonaktif 60 detik dengan hitung mundur), dan **Keluar**. Memeriksa status sendiri (tanpa menampilkan error) saat halaman dibuka dan saat tab terlihat lagi (`visibilitychange`). Setelah terverifikasi, `AuthGuard` yang memindahkan ke papan
 - `Board` (`"use client"`) — isi halaman `/`. Berlangganan `/tasks` lewat `taskService.subscribeTasks` di `useEffect`, membagi task ke 3 kolom per `status` (state `content`), dan me-render kolom beserta daftar `TaskCard` langsung di dalamnya — tidak ada komponen `Column` terpisah. Header berisi email user, tombol "Keluar", dan "Tambah Task". Saat keluar, listener `/tasks` dilepas **dulu** (disimpan di `unsubscribeTasksRef`) baru `authService.signOut()` dipanggil — kalau urutannya terbalik, Firebase membatalkan listener dengan error `permission_denied`. Juga memegang state `ModalForm` (`modalType` `"create"`/`"edit"`, `editingTask`) dan `ConfirmDialog` (`deletingTask`). Ketiga state itu sengaja **tidak** di-reset saat modal ditutup, supaya judul & isi modal tidak berubah selama animasi tutup
 - `TaskCard` (`"use client"`) — komponen presentational: menerima data task lewat props plus callback `onStatusChange(status)`, `onEdit`, `onDelete`, dan tidak memanggil Firebase. Menampilkan badge prioritas (label Rendah / Sedang / Tinggi), judul (dicoret dan berwarna `#6B6B70` saat `status` = `done`), deskripsi, rentang tanggal, dropdown status (mengisi sisa lebar baris aksi), serta tombol edit/hapus. Rentang tanggal diformat dengan `Intl.DateTimeFormat` locale `id-ID`, nama bulan lengkap, `timeZone: "UTC"` (supaya tanggal tidak bergeser antar zona waktu); tahun hanya ditampilkan kalau tahun `startDate` dan `deadline` berbeda — contoh "20 September – 24 September" dan "31 Desember 2026 – 1 Januari 2027"
 - `ModalForm` (`"use client"`, modal) — form task berbasis **React Hook Form**, dipakai untuk Create maupun Update. Props: `isOpen`, `onClose`, `title` (judul modal), `defaultValues` (nilai awal mode edit), `onSubmit(values)` (boleh async; kalau reject, pesan error tampil dan modal tetap terbuka). Yang dikirim ke `onSubmit` hanya 6 field task (tanpa `id`), dengan spasi di awal/akhir judul & deskripsi sudah dibuang. Layout: 1 field per baris (Judul, Deskripsi, Status, Prioritas), kecuali Tanggal Mulai + Deadline dalam 1 baris. Validasi: judul wajib, tanggal mulai & deadline wajib, deadline ≥ tanggal mulai; deskripsi opsional. Panjang judul & deskripsi dibatasi lewat atribut `maxLength` dari konstanta `maxTitleLength` / `maxDescriptionLength` di `tasksService`, yang nilainya harus sama dengan batas di `database.rules.json`. Default: `status: "todo"`, `priority: "medium"`, `startDate` hari ini. Klik di mana pun pada field tanggal membuka kalender lewat `showPicker()`. Ikon bawaan browser di select & field tanggal disembunyikan dan diganti ikon Font Awesome lewat komponen internal `FieldControl`. Form di-render di dalam `Modal`, jadi selalu kosong lagi setiap kali dibuka
@@ -98,13 +121,14 @@ src/
   - `createTask(task: TaskInput)` — menambahkan `createdBy` dari `currentUser` Firebase Auth (reject kalau belum login), lalu `push` ke `/tasks`; resolve setelah Firebase mengonfirmasi
   - `updateTask(id, changes: Partial<TaskInput>)` — `update`, hanya field yang dikirim (`createdBy` tidak bisa ikut diubah); dipakai dropdown status di `TaskCard` dan mode edit `ModalForm`
   - `deleteTask(id)` — `remove`, dipanggil lewat `ConfirmDialog`
-- `src/features/auth/services/authService.ts` — satu-satunya titik akses ke Firebase Auth; default export `authService` dengan `subscribeAuth(onChange)` (`onAuthStateChanged`), `signIn(email, password)`, `signUp(email, password)` (langsung login), dan `signOut()`. Juga mengekspor `getAuthErrorMessage(error)` (kode error Firebase → pesan Bahasa Indonesia) dan tipe `AuthUser` (= `User` Firebase), supaya komponen tidak perlu import dari `firebase/auth`
-- `src/lib/firebase.ts` — inisialisasi Firebase secara lazy (`getFirebaseApp()`) supaya Firebase hanya berjalan di browser, bukan saat Next.js melakukan prerender; mengekspor `getDb()` dan `getFirebaseAuth()`
+- `src/features/auth/services/authService.ts` — satu-satunya titik akses ke Firebase Auth; default export `authService` dengan `subscribeAuth(onChange)` (`onIdTokenChanged`), `signIn(email, password)`, `signUp(email, password)` (langsung login + kirim email verifikasi; promise pengirimannya disimpan untuk `takeSignUpVerificationEmail()`), `hasVerifiedEmail(user)` (claim `email_verified` di token; refresh token kalau berbeda dengan `user.emailVerified`, maksimal sekali per akun per page load lewat `renewedTokenUids` supaya tidak loop), `resendVerificationEmail()`, `refreshVerificationStatus()` (`reload` + token baru kalau sudah terverifikasi; mengembalikan status), dan `signOut()`. Juga mengekspor `getAuthErrorMessage(error)` (kode error Firebase → pesan Bahasa Indonesia) dan tipe `AuthUser` (= `User` Firebase), supaya komponen tidak perlu import dari `firebase/auth`
+- `src/features/auth/services/usersService.ts` — akses `/users/{uid}`: `syncUserProfile(user)` membaca `email` dan `email_verified` dari token, lalu menulis `{ email, isVerified }` hanya kalau data belum ada atau berbeda
+- `src/lib/firebase.ts` — inisialisasi Firebase secara lazy (`getFirebaseApp()`) supaya Firebase hanya berjalan di browser, bukan saat Next.js melakukan prerender; mengekspor `getDb()` dan `getFirebaseAuth()` (yang juga memasang `languageCode = "id"`)
 
 ## Desain UI
 
-### Halaman Login & Registrasi
-Kartu putih di tengah layar (lebar maksimal 400px) di atas latar `#F6F5F1`: judul ("Masuk" / "Buat Akun"), subjudul, field satu per baris dengan gaya yang sama seperti field `ModalForm`, tombol utama selebar kartu, dan link ke halaman satunya di bagian bawah.
+### Halaman Login, Registrasi & Verifikasi Email
+Kartu putih di tengah layar (`AuthCard`, lebar maksimal 400px) di atas latar `#F6F5F1`: judul ("Masuk" / "Buat Akun" / "Verifikasi Email"), subjudul, isi, dan tombol utama selebar kartu. Login/registrasi: field satu per baris dengan gaya yang sama seperti field `ModalForm`, dan link ke halaman satunya di bagian bawah. Verifikasi email: instruksi, pesan sukses (hijau `#27704F` di `#E2F2EA`) atau error (`form.alert`), lalu tiga tombol bertumpuk — utama, outlined, dan teks "Keluar".
 
 ### Layout Desktop (≥ 1024px)
 3 kolom tetap (To Do / In Progress / Done) dengan lebar sama rata. Header berisi judul papan di kiri; di kanan: email user, tombol "Keluar" (neutral outlined), dan tombol "Tambah Task". Breakpoint 1024px dipilih karena di bawah lebar itu kartu (dropdown status + 2 tombol aksi + padding) mulai terlalu sesak untuk 3 kolom sekaligus.

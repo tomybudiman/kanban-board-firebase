@@ -28,5 +28,8 @@ export function getDb(): Database {
 }
 
 export function getFirebaseAuth(): Auth {
-  return getAuth(getFirebaseApp());
+  const auth: Auth = getAuth(getFirebaseApp());
+  // Emails sent by Firebase (such as the verification email) use Bahasa Indonesia, like the UI.
+  auth.languageCode = "id";
+  return auth;
 }

@@ -10,6 +10,7 @@ import {
 
 import Button from "@/components/Button/Button";
 import FieldError from "@/components/FieldError/FieldError";
+import AuthCard from "@/features/auth/components/AuthCard/AuthCard";
 import authService, {
   getAuthErrorMessage,
 } from "@/features/auth/services/authService";
@@ -97,115 +98,106 @@ export default function AuthForm({ mode }: AuthFormProps): ReactElement {
 
   // Main Render
   return (
-    <main className={styles.AuthForm}>
-      <div className={styles.AuthForm__card}>
-        <div className={styles.AuthForm__header}>
-          <h1>{content.title}</h1>
-          <p>{content.subtitle}</p>
+    <AuthCard title={content.title} subtitle={content.subtitle}>
+      <form
+        noValidate
+        className={styles.AuthForm__form}
+        onSubmit={handleSubmit(submit)}
+      >
+        <div className={styles.AuthForm__form__field}>
+          <label htmlFor={`${id}-email`}>Email</label>
+          <input
+            id={`${id}-email`}
+            type="email"
+            autoFocus
+            autoComplete="email"
+            placeholder="nama@email.com"
+            aria-invalid={Boolean(errors.email)}
+            aria-describedby={`${id}-email-error`}
+            {...register("email", {
+              validate: (value: string): true | string => {
+                if (value.trim() === "") return "Email wajib diisi";
+                return (
+                  emailPattern.test(value.trim()) || "Format email tidak valid"
+                );
+              },
+            })}
+          />
+          <FieldError
+            id={`${id}-email-error`}
+            message={errors.email?.message}
+          />
         </div>
-        <form
-          noValidate
-          className={styles.AuthForm__form}
-          onSubmit={handleSubmit(submit)}
-        >
+        <div className={styles.AuthForm__form__field}>
+          <label htmlFor={`${id}-password`}>Password</label>
+          <input
+            id={`${id}-password`}
+            type="password"
+            autoComplete={isRegister ? "new-password" : "current-password"}
+            placeholder={
+              isRegister ? `Minimal ${minPasswordLength} karakter` : undefined
+            }
+            aria-invalid={Boolean(errors.password)}
+            aria-describedby={`${id}-password-error`}
+            {...register("password", {
+              required: "Password wajib diisi",
+              minLength: isRegister
+                ? {
+                    value: minPasswordLength,
+                    message: `Password minimal ${minPasswordLength} karakter`,
+                  }
+                : undefined,
+              deps: isRegister ? "confirmPassword" : undefined,
+            })}
+          />
+          <FieldError
+            id={`${id}-password-error`}
+            message={errors.password?.message}
+          />
+        </div>
+        {isRegister && (
           <div className={styles.AuthForm__form__field}>
-            <label htmlFor={`${id}-email`}>Email</label>
+            <label htmlFor={`${id}-confirmPassword`}>Konfirmasi Password</label>
             <input
-              id={`${id}-email`}
-              type="email"
-              autoFocus
-              autoComplete="email"
-              placeholder="nama@email.com"
-              aria-invalid={Boolean(errors.email)}
-              aria-describedby={`${id}-email-error`}
-              {...register("email", {
-                validate: (value: string): true | string => {
-                  if (value.trim() === "") return "Email wajib diisi";
-                  return (
-                    emailPattern.test(value.trim()) ||
-                    "Format email tidak valid"
-                  );
-                },
-              })}
-            />
-            <FieldError
-              id={`${id}-email-error`}
-              message={errors.email?.message}
-            />
-          </div>
-          <div className={styles.AuthForm__form__field}>
-            <label htmlFor={`${id}-password`}>Password</label>
-            <input
-              id={`${id}-password`}
+              id={`${id}-confirmPassword`}
               type="password"
-              autoComplete={isRegister ? "new-password" : "current-password"}
-              placeholder={
-                isRegister ? `Minimal ${minPasswordLength} karakter` : undefined
-              }
-              aria-invalid={Boolean(errors.password)}
-              aria-describedby={`${id}-password-error`}
-              {...register("password", {
-                required: "Password wajib diisi",
-                minLength: isRegister
-                  ? {
-                      value: minPasswordLength,
-                      message: `Password minimal ${minPasswordLength} karakter`,
-                    }
-                  : undefined,
-                deps: isRegister ? "confirmPassword" : undefined,
+              autoComplete="new-password"
+              placeholder="Ketik ulang password"
+              aria-invalid={Boolean(errors.confirmPassword)}
+              aria-describedby={`${id}-confirmPassword-error`}
+              {...register("confirmPassword", {
+                required: "Konfirmasi password wajib diisi",
+                validate: (
+                  value: string,
+                  values: AuthFormValues,
+                ): true | string =>
+                  value === values.password || "Password tidak sama",
               })}
             />
             <FieldError
-              id={`${id}-password-error`}
-              message={errors.password?.message}
+              id={`${id}-confirmPassword-error`}
+              message={errors.confirmPassword?.message}
             />
           </div>
-          {isRegister && (
-            <div className={styles.AuthForm__form__field}>
-              <label htmlFor={`${id}-confirmPassword`}>
-                Konfirmasi Password
-              </label>
-              <input
-                id={`${id}-confirmPassword`}
-                type="password"
-                autoComplete="new-password"
-                placeholder="Ketik ulang password"
-                aria-invalid={Boolean(errors.confirmPassword)}
-                aria-describedby={`${id}-confirmPassword-error`}
-                {...register("confirmPassword", {
-                  required: "Konfirmasi password wajib diisi",
-                  validate: (
-                    value: string,
-                    values: AuthFormValues,
-                  ): true | string =>
-                    value === values.password || "Password tidak sama",
-                })}
-              />
-              <FieldError
-                id={`${id}-confirmPassword-error`}
-                message={errors.confirmPassword?.message}
-              />
-            </div>
-          )}
-          {errors.root?.message && (
-            <p role="alert" className={styles.AuthForm__form__error}>
-              {errors.root.message}
-            </p>
-          )}
-          <Button
-            size="large"
-            type="submit"
-            disabled={isSubmitting}
-            className={styles.AuthForm__form__submit}
-          >
-            {isSubmitting ? "Memproses..." : content.submitLabel}
-          </Button>
-        </form>
-        <p className={styles.AuthForm__switch}>
-          {content.switchText}{" "}
-          <Link href={content.switchHref}>{content.switchLabel}</Link>
-        </p>
-      </div>
-    </main>
+        )}
+        {errors.root?.message && (
+          <p role="alert" className={styles.AuthForm__form__error}>
+            {errors.root.message}
+          </p>
+        )}
+        <Button
+          size="large"
+          type="submit"
+          disabled={isSubmitting}
+          className={styles.AuthForm__form__submit}
+        >
+          {isSubmitting ? "Memproses..." : content.submitLabel}
+        </Button>
+      </form>
+      <p className={styles.AuthForm__switch}>
+        {content.switchText}{" "}
+        <Link href={content.switchHref}>{content.switchLabel}</Link>
+      </p>
+    </AuthCard>
   );
 }

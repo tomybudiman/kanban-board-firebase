@@ -1,0 +1,42 @@
+@use "../../../../styles/form";
+
+.VerifyEmail {
+  gap: 16px;
+  display: flex;
+  flex-direction: column;
+  &__instructions {
+    gap: 8px;
+    display: flex;
+    flex-direction: column;
+    &__text {
+      color: #1b1b1d;
+      font-size: 14px;
+      line-height: 20px;
+      overflow-wrap: anywhere;
+    }
+    &__hint {
+      color: #6b6b70;
+      font-size: 14px;
+      line-height: 20px;
+    }
+  }
+  &__error {
+    @include form.alert;
+  }
+  &__success {
+    color: #27704f;
+    font-size: 14px;
+    border-radius: 10px;
+    padding: 10px 12px;
+    background-color: #e2f2ea;
+  }
+  &__actions {
+    gap: 8px;
+    display: flex;
+    margin-top: 8px;
+    flex-direction: column;
+    &__button {
+      width: 100%;
+    }
+  }
+}

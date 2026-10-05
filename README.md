@@ -4,13 +4,22 @@ A simple kanban board built with Next.js, Firebase Realtime Database, and Fireba
 
 ## Features
 
-- **Accounts** — register and log in with email and password (Firebase Authentication). The board is only available to signed-in users, and all of them share the same board.
+- **Accounts** — register and log in with email and password (Firebase Authentication). A new account must verify its email address first: Firebase sends a verification link, and the board stays locked until the link is opened. Each account also has a record in the database at `/users/{uid}` that shows whether it is verified. All verified users share the same board.
 - **Create** — add a task through a modal form (title, description, status, priority, start date, deadline). The account that created it is saved with the task.
 - **Read** — tasks are grouped into three columns (To Do / In Progress / Done) and stay in sync in realtime across every open tab and device.
 - **Update** — edit a task's details through the same form, or move it to another column with the status dropdown on its card.
 - **Delete** — remove a task after confirming in a dialog.
 
 The UI text is in Bahasa Indonesia.
+
+## Development Phases
+
+The app was built in four phases. Each has its own document with the goals, technical decisions, problems and fixes, and how it was tested:
+
+1. [Kanban board with full CRUD](docs/phase-1-kanban-crud.md) — the board, Firebase Realtime Database, and create, read, update, and delete.
+2. [Authentication](docs/phase-2-authentication.md) — registration and login, the task creator in `createdBy`, and database rules with emulator tests.
+3. [Deployment to Google App Engine](docs/phase-3-app-engine-deployment.md) — hosting the app on App Engine, and the build problems solved along the way.
+4. [Email verification](docs/phase-4-email-verification.md) — a verification email after registering, the `/verify-email` page, `/users/{uid}` records, and rules that require a verified email.
 
 ## Tech Stack
 
@@ -66,12 +75,13 @@ yarn
      (the first time, run `npx firebase-tools@15 login` to sign in to your Google account).
 
    `database.rules.json` is the only source of the rules — after changing it, publish it again and run `yarn test:rules` (see [Testing the database rules](#testing-the-database-rules)). What the rules enforce:
-   - Only signed-in users can read or write tasks. The login page alone doesn't protect the data — without these rules, anyone who knows the database URL could still read and change it.
-   - Any signed-in user can edit or delete any task (the board is shared).
+   - Only signed-in users **with a verified email** can read or write tasks. The login page alone doesn't protect the data — without these rules, anyone who knows the database URL could still read and change it.
+   - Any verified user can edit or delete any task (the board is shared).
    - Every task has exactly the fields in the [data model](#data-model), with valid values: a non-blank title of at most 200 characters, a description of at most 2000 characters, a known `status` and `priority`, dates in `YYYY-MM-DD` format, and a deadline on or after the start date. Any other field is rejected. This applies to every write, including ones made through the REST API rather than the app.
    - A new task must have a `createdBy` that matches the account writing it, so nobody can create a task in someone else's name.
    - `createdBy` can never be changed or removed afterwards, not even by the task's creator.
    - Tasks created before sign-in was added (without `createdBy`) can still be edited and deleted.
+   - Each user can read and write only their own record at `/users/{uid}`, with exactly `email` (their account's email) and `isVerified`. `isVerified` must match whether Firebase Authentication considers the email verified, so nobody can mark themselves as verified. The record cannot be deleted.
 
    Avoid "test mode" rules: they expire after 30 days, after which the board silently stops loading.
 5. Go to **Project settings → General → Your apps**, add a **Web app** (`</>`), and keep the `firebaseConfig` values it shows you for the next step.
@@ -94,11 +104,13 @@ Make sure `NEXT_PUBLIC_FIREBASE_DATABASE_URL` is filled in. If you registered th
 yarn dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). You'll be sent to `/login`; create an account on `/register` first.
+Open [http://localhost:3000](http://localhost:3000). You'll be sent to `/login`; create an account on `/register` first. After registering you land on `/verify-email`: open the link in the verification email Firebase sends you, and the board opens.
 
 If something doesn't work:
 - **Registering or logging in shows "Login dengan email & password belum diaktifkan di Firebase Console."** — the Email/Password sign-in method from step 3.2 isn't enabled.
 - **Saving a task fails with `PERMISSION_DENIED`, or the board stays empty and the browser console shows a `permission_denied` error** — the database rules from step 3.4 weren't published.
+- **The verification email doesn't arrive** — check the spam folder, then use **Kirim Ulang Email** on `/verify-email`. Firebase sends it from `noreply@<project-id>.firebaseapp.com`.
+- **Sending the verification email shows "Domain aplikasi ini belum diizinkan di Firebase…"** — the domain the app runs on is missing from Firebase Console → Authentication → Settings → **Authorized domains**. `localhost` is there by default; a deployed domain has to be added.
 
 ## Scripts
 
@@ -115,7 +127,7 @@ If something doesn't work:
 
 ## Testing the database rules
 
-`yarn test:rules` starts the Firebase Auth and Realtime Database emulators on your machine, runs [`scripts/test-rules.mjs`](scripts/test-rules.mjs) against them, and stops them again. It never touches your real Firebase project and needs no login. The script creates test accounts and tries about 40 reads and writes — signed out, signed in, with invalid fields, with a forged `createdBy`, and so on — and checks that each one is allowed or denied as expected. The command fails if any check fails.
+`yarn test:rules` starts the Firebase Auth and Realtime Database emulators on your machine, runs [`scripts/test-rules.mjs`](scripts/test-rules.mjs) against them, and stops them again. It never touches your real Firebase project and needs no login. The script creates test accounts — verifying some of them through the emulator, like a user clicking the email link — and tries about 60 reads and writes — signed out, signed in with and without a verified email, with invalid fields, with a forged `createdBy` or `isVerified`, and so on — and checks that each one is allowed or denied as expected. The command fails if any check fails.
 
 Requirements: **Java 21 or newer** (the Realtime Database emulator runs on Java). The Firebase CLI is downloaded automatically through `npx` on the first run.
 
@@ -123,15 +135,27 @@ Requirements: **Java 21 or newer** (the Realtime Database emulator runs on Java)
 
 | Route | Who can open it | Content |
 |---|---|---|
-| `/` | Signed-in users | The board. Signed-out visitors are sent to `/login` |
-| `/login` | Signed-out users | Login form. Signed-in users are sent to `/` |
-| `/register` | Signed-out users | Registration form (email, password, password confirmation). A new account is signed in right away |
+| `/` | Signed-in users with a verified email | The board |
+| `/login` | Signed-out users | Login form |
+| `/register` | Signed-out users | Registration form (email, password, password confirmation). A new account is signed in right away and gets a verification email |
+| `/verify-email` | Signed-in users whose email isn't verified yet | Instructions, plus buttons to check again, resend the email (at most once a minute), and sign out. The page also checks on its own when it opens and when its tab becomes visible again |
+
+Anyone on a page that isn't for them is sent to the one that is: signed-out visitors to `/login`, unverified users to `/verify-email`, and verified users to `/`.
 
 The redirects run in the browser, because Firebase keeps the signed-in session in the browser rather than in a cookie the server could read. They only decide which page is shown; the data itself is protected by the database rules.
 
 ## Data Model
 
-User accounts live in Firebase Authentication. Each task is stored at `/tasks/{taskId}`, where `taskId` is generated by Firebase:
+User accounts live in Firebase Authentication. Each account also has a record at `/users/{uid}`, where `uid` is the account's Firebase Authentication ID:
+
+| Field | Type | Description |
+|---|---|---|
+| `email` | string | The account's email address |
+| `isVerified` | boolean | Whether the email has been verified. `false` after registering, `true` once the link in the verification email has been opened |
+
+The app creates the record when an account first signs in and updates it when the email gets verified.
+
+Each task is stored at `/tasks/{taskId}`, where `taskId` is generated by Firebase:
 
 | Field | Type | Description |
 |---|---|---|
@@ -147,6 +171,7 @@ User accounts live in Firebase Authentication. Each task is stored at `/tasks/{t
 
 ```
 .gcloudignore               # Files App Engine deploys leave out
+docs/                       # One document per development phase
 app.example.yaml            # App Engine config template (copy to app.yaml, which is ignored by Git)
 database.rules.json         # Realtime Database rules (publish these to Firebase)
 firebase.json               # Firebase CLI config: rules file and emulator ports
@@ -157,11 +182,14 @@ src/
 │   ├── fonts/              # Inter font files, loaded with next/font/local
 │   ├── layout.tsx          # Root layout: font, Font Awesome, and AuthProvider
 │   ├── (auth)/             # Pages for signed-out users (the folder name isn't part of the URL)
-│   │   ├── layout.tsx      # Sends signed-in users to /
+│   │   ├── layout.tsx      # Sends everyone else away
 │   │   ├── login/page.tsx
 │   │   └── register/page.tsx
-│   └── (board)/            # Pages for signed-in users
-│       ├── layout.tsx      # Sends signed-out users to /login
+│   ├── (verify)/           # Pages for signed-in users whose email isn't verified yet
+│   │   ├── layout.tsx
+│   │   └── verify-email/page.tsx
+│   └── (board)/            # Pages for verified users
+│       ├── layout.tsx
 │       └── page.tsx        # The board
 ├── components/             # Generic UI, not tied to any feature
 │   ├── Button/             # Shared button
@@ -171,11 +199,14 @@ src/
 ├── features/               # One folder per feature: its components and its Firebase service
 │   ├── auth/
 │   │   ├── components/
+│   │   │   ├── AuthCard/       # The centered card used by the login, register, and verify-email pages
 │   │   │   ├── AuthForm/       # Login and register form
-│   │   │   ├── AuthGuard/      # Redirects based on sign-in state, used by the two layouts above
-│   │   │   └── AuthProvider/   # Shares the signed-in user with every page (useAuth)
+│   │   │   ├── AuthGuard/      # Redirects based on sign-in and verification state, used by the layouts above
+│   │   │   ├── AuthProvider/   # Shares the signed-in user and verification state with every page (useAuth)
+│   │   │   └── VerifyEmail/    # The /verify-email page
 │   │   └── services/
-│   │       └── authService.ts  # Register, login, logout, and sign-in state
+│   │       ├── authService.ts  # Register, login, logout, sign-in state, and verification emails
+│   │       └── usersService.ts # The account's record at /users/{uid}
 │   └── board/
 │       ├── components/
 │       │   ├── Board/          # The board: columns, task cards, and the task modals
@@ -193,7 +224,7 @@ How the folders depend on each other:
 - `app/` only defines routes; each page renders a component from `features/`.
 - `features/` may use `components/`, `lib/`, and `styles/`. The `board` feature uses `auth` (to show the signed-in user and to sign out), never the other way around.
 - `components/` knows nothing about tasks, accounts, or Firebase, so its components could be reused in another project as they are.
-- Components never call Firebase directly — every access goes through a feature's service (`authService.ts` or `tasksService.ts`).
+- Components never call Firebase directly — every access goes through a feature's service (`authService.ts`, `usersService.ts`, or `tasksService.ts`).
 
 ## Deployment (Google App Engine)
 
@@ -212,6 +243,7 @@ Requires the [Google Cloud CLI](https://cloud.google.com/sdk/docs/install) (`gcl
    ```bash
    gcloud services enable cloudbuild.googleapis.com --project <project-id>
    ```
+4. After the first deploy, add the app's domain (`<project-id>.<region-code>.r.appspot.com`) to Firebase Console → Authentication → Settings → **Authorized domains**. Without it, the verification email cannot link back to the app, and sending it fails.
 
 ### Deploying
 
@@ -237,4 +269,4 @@ What happens during a deploy:
 
 If something goes wrong:
 - **See the server logs:** `gcloud app logs tail --project <project-id>`.
-- **Logging in fails with `auth/unauthorized-domain`:** add the `appspot.com` domain in Firebase Console → Authentication → Settings → Authorized domains.
+- **Sending the verification email fails with "Domain aplikasi ini belum diizinkan di Firebase…" (`auth/unauthorized-continue-uri`):** the `appspot.com` domain is missing from Firebase Console → Authentication → Settings → Authorized domains (one-time setup step 4).

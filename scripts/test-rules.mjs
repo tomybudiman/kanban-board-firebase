@@ -28,22 +28,69 @@ const validTask = {
 const results = [];
 
 /**
- * @description Creates an account in the Auth emulator and returns its uid, email, and ID token.
+ * @description Calls an Identity Toolkit endpoint of the Auth emulator (e.g. "accounts:signUp") and returns the parsed response.
  */
-async function signUp(email) {
+async function authApi(endpoint, body) {
   const response = await fetch(
-    `http://${authHost}/identitytoolkit.googleapis.com/v1/accounts:signUp?key=demo-key`,
+    `http://${authHost}/identitytoolkit.googleapis.com/v1/${endpoint}?key=demo-key`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, returnSecureToken: true }),
+      body: JSON.stringify(body),
     },
   );
-  const body = await response.json();
-  if (!body.idToken) {
-    throw new Error(`Gagal membuat akun uji: ${JSON.stringify(body)}`);
+  const result = await response.json();
+  if (!response.ok) {
+    throw new Error(`${endpoint} gagal: ${JSON.stringify(result)}`);
   }
+  return result;
+}
+
+/**
+ * @description Creates an account in the Auth emulator and returns its uid, email, and ID token. The email is not verified yet.
+ */
+async function signUp(email) {
+  const body = await authApi("accounts:signUp", {
+    email,
+    password,
+    returnSecureToken: true,
+  });
   return { uid: body.localId, email: body.email, token: body.idToken };
+}
+
+/**
+ * @description Signs an existing account in again and returns it with a new ID token.
+ */
+async function signIn(email) {
+  const body = await authApi("accounts:signInWithPassword", {
+    email,
+    password,
+    returnSecureToken: true,
+  });
+  return { uid: body.localId, email: body.email, token: body.idToken };
+}
+
+/**
+ * @description Verifies an account's email the way a real user does: asks Firebase to send the verification email, takes the code from the link (the emulator keeps sent emails instead of sending them), and applies it. Returns the account signed in again, because only a new ID token carries email_verified: true.
+ */
+async function verifyEmail(user) {
+  await authApi("accounts:sendOobCode", {
+    requestType: "VERIFY_EMAIL",
+    idToken: user.token,
+  });
+  const response = await fetch(
+    `http://${authHost}/emulator/v1/projects/${projectId}/oobCodes`,
+  );
+  const { oobCodes } = await response.json();
+  const code = oobCodes.findLast(
+    (entry) =>
+      entry.email === user.email && entry.requestType === "VERIFY_EMAIL",
+  );
+  if (!code) {
+    throw new Error(`Kode verifikasi untuk ${user.email} tidak ditemukan`);
+  }
+  await authApi("accounts:update", { oobCode: code.oobCode });
+  return signIn(user.email);
 }
 
 /**
@@ -87,12 +134,28 @@ async function seedTask(createdBy) {
 }
 
 await request("DELETE", "tasks", { admin: true });
-const alice = await signUp("alice@example.com");
-const bob = await signUp("bob@example.com");
+await request("DELETE", "users", { admin: true });
+// Alice and Bob have verified their email; Carol has not (yet).
+const alice = await verifyEmail(await signUp("alice@example.com"));
+const bob = await verifyEmail(await signUp("bob@example.com"));
+const carol = await signUp("carol@example.com");
 const byAlice = { uid: alice.uid, email: alice.email };
 const byBob = { uid: bob.uid, email: bob.email };
 
-// Signed-out access
+// Signed-out and unverified access
+expectRequest(
+  "Belum verifikasi email: baca /tasks ditolak",
+  await request("GET", "tasks", { user: carol }),
+  false,
+);
+expectRequest(
+  "Belum verifikasi email: buat task ditolak",
+  await request("POST", "tasks", {
+    user: carol,
+    body: { ...validTask, createdBy: { uid: carol.uid, email: carol.email } },
+  }),
+  false,
+);
 expectRequest(
   "Tanpa login: baca /tasks ditolak",
   await request("GET", "tasks"),
@@ -296,7 +359,116 @@ expectRequest(
   false,
 );
 
+// User profiles at /users/{uid}
+const carolPath = `users/${carol.uid}`;
+const profile = (user, isVerified) => ({ email: user.email, isVerified });
+const writeCarol = (body, user = carol) =>
+  request("PUT", carolPath, { user, body });
+expectRequest(
+  "Tanpa login: baca data user ditolak",
+  await request("GET", carolPath),
+  false,
+);
+expectRequest(
+  "Belum verifikasi: simpan data sendiri dengan isVerified false boleh",
+  await writeCarol(profile(carol, false)),
+  true,
+);
+expectRequest(
+  "Belum verifikasi: isVerified true ditolak",
+  await writeCarol(profile(carol, true)),
+  false,
+);
+expectRequest(
+  "Baca data sendiri boleh",
+  await request("GET", carolPath, { user: carol }),
+  true,
+);
+expectRequest(
+  "Baca data user lain ditolak",
+  await request("GET", carolPath, { user: alice }),
+  false,
+);
+expectRequest(
+  "Baca seluruh /users ditolak",
+  await request("GET", "users", { user: carol }),
+  false,
+);
+expectRequest(
+  "Tulis data user lain ditolak",
+  await writeCarol(profile(alice, true), alice),
+  false,
+);
+expectRequest(
+  "Email yang berbeda dengan akun ditolak",
+  await writeCarol({ email: "lain@example.com", isVerified: false }),
+  false,
+);
+expectRequest(
+  "isVerified bukan boolean ditolak",
+  await writeCarol({ email: carol.email, isVerified: "false" }),
+  false,
+);
+expectRequest(
+  "Data tanpa isVerified ditolak",
+  await writeCarol({ email: carol.email }),
+  false,
+);
+expectRequest(
+  "Data user dengan field tambahan ditolak",
+  await writeCarol({ ...profile(carol, false), role: "admin" }),
+  false,
+);
+expectRequest(
+  "Hapus data sendiri ditolak",
+  await request("DELETE", carolPath, { user: carol }),
+  false,
+);
+expectRequest(
+  "Hapus email saja ditolak",
+  await request("DELETE", `${carolPath}/email`, { user: carol }),
+  false,
+);
+
+// After Carol verifies her email
+const verifiedCarol = await verifyEmail(carol);
+expectRequest(
+  "Token lama dari sebelum verifikasi: isVerified true tetap ditolak",
+  await writeCarol(profile(carol, true)),
+  false,
+);
+expectRequest(
+  "Sudah verifikasi (token baru): ubah isVerified jadi true boleh",
+  await request("PATCH", carolPath, {
+    user: verifiedCarol,
+    body: { isVerified: true },
+  }),
+  true,
+);
+expectRequest(
+  "Sudah verifikasi: isVerified false ditolak",
+  await request("PATCH", carolPath, {
+    user: verifiedCarol,
+    body: { isVerified: false },
+  }),
+  false,
+);
+expectRequest(
+  "Sudah verifikasi: baca /tasks boleh",
+  await request("GET", "tasks", { user: verifiedCarol }),
+  true,
+);
+const storedProfile = await request("GET", carolPath, { admin: true });
+results.push({
+  name: "Data Carol akhirnya { email, isVerified: true }",
+  passed:
+    storedProfile.body?.email === carol.email &&
+    storedProfile.body?.isVerified === true &&
+    Object.keys(storedProfile.body ?? {}).length === 2,
+});
+
 await request("DELETE", "tasks", { admin: true });
+await request("DELETE", "users", { admin: true });
 
 for (const result of results) {
   console.log(`${result.passed ? "LULUS" : "GAGAL"}  ${result.name}`);

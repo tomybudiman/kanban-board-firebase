@@ -12,26 +12,36 @@ import {
 
 import styles from "./AuthGuard.module.scss";
 
-// "user": only signed-in users may see the pages (the board). "guest": only signed-out users (login and register).
-export type AuthGuardAccess = "user" | "guest";
+// Who may see a page: "guest" = signed out (login, register), "unverified" = signed in but the email is not verified yet (verify-email), "verified" = signed in with a verified email (the board).
+export type AuthGuardAccess = "guest" | "unverified" | "verified";
 
 interface AuthGuardProps {
   access: AuthGuardAccess;
   children: ReactNode;
 }
 
+// The page each kind of user belongs on; anyone on a page meant for someone else is sent here.
+const homePaths: Record<AuthGuardAccess, string> = {
+  guest: "/login",
+  unverified: "/verify-email",
+  verified: "/",
+};
+
 /**
- * @description Shows its pages only to the users allowed by access, and moves everyone else away: signed-out users to /login, signed-in users to /. While Firebase is still checking the saved session, a loading screen is shown instead, so the wrong page never flashes. This only decides what is shown; the data itself is protected by the database rules.
+ * @description Shows its pages only to the users allowed by access, and moves everyone else to the page for their state: signed-out users to /login, users who haven't verified their email to /verify-email, and verified users to the board. While Firebase is still checking the saved session, a loading screen is shown instead, so the wrong page never flashes. This only decides what is shown; the data itself is protected by the database rules.
  */
 export default function AuthGuard({
   access,
   children,
 }: AuthGuardProps): ReactElement {
-  const { user, isLoading }: AuthContextValue = useAuth();
+  const { user, isEmailVerified, isLoading }: AuthContextValue = useAuth();
   const router: ReturnType<typeof useRouter> = useRouter();
-  const isSignedIn: boolean = user !== null;
-  const isAllowed: boolean = !isLoading && isSignedIn === (access === "user");
-  const redirectPath: string = access === "user" ? "/login" : "/";
+  let userState: AuthGuardAccess = "guest";
+  if (user) {
+    userState = isEmailVerified ? "verified" : "unverified";
+  }
+  const isAllowed: boolean = !isLoading && userState === access;
+  const redirectPath: string = homePaths[userState];
 
   useEffect((): void => {
     // replace() instead of push(), so the Back button doesn't return to a page that redirects again.
